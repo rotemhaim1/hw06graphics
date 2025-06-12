@@ -2,7 +2,7 @@
 
 **Semester:** Spring 2025  
 **Course:** Computer Graphics  
-**Student Name:** May Bourshan
+**Student Name :** May Bourshan
 
 ---
 
@@ -90,15 +90,29 @@ This project implements a fully interactive 3D basketball court scene using WebG
 ### 🎥 Multiple Camera Presets
 - 4 view presets available with keys `1` to `4`
 
----
+## 📸 Screenshots
 
-## 📸 Required Screenshots
+### 🏀 Full court view  
+(*This is the default camera preset when pressing `3`*)  
+![Full Court](screenshots/full_court.png)
 
-- [ ] General view of the court
-- [ ] Close-up of a hoop with net
-- [ ] Basketball at center court
-- [ ] Scoreboard with timer
-- [ ] Views showing different camera angles
+### 🔍 Close-up of basketball hoop with net  
+![Hoop Closeup](screenshots/hoop_closeup.png)
+
+### 🎯 Basketball positioned at center court  
+![Ball Center](screenshots/basketball_closeup.png)
+
+### 🎥 Camera controls in action  
+The following views demonstrate the working camera presets triggered by keys `1`, `2`, and `4`:
+
+- **Top-down view (key `1`)**  
+  ![Top View](screenshots/press_1.png)
+
+- **Behind scoreboard view (key `2`)**  
+  ![Back View](screenshots/press_2.png)
+
+- **Sideline view (key `4`)**  
+  ![Side View](screenshots/press_4.png)
 
 ---
 
