@@ -2,7 +2,7 @@
 
 **Semester:** Spring 2025  
 **Course:** Computer Graphics  
-**Student Name(s):** May Bourshan
+**Student Name:** May Bourshan
 
 ---
 
