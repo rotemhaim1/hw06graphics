@@ -39,9 +39,10 @@ This project implements a fully interactive 3D basketball court scene using WebG
   - Metal chain nets (20 segments)
   - Back support poles and angled arms
 - ✅ Realistic basketball at center court:
-  - Orange texture
-  - Seam lines (horizontal + vertical)
-  - Correct size and geometry
+  - Orange texture with leather-like appearance
+  - 4 seam lines: 2 horizontal, 2 vertical (using TubeGeometry)
+  - Correct size and geometry (radius: 0.5)
+  - Two logos (Nike and NBA) added directly on the ball surface
 - ✅ Camera setup:
   - Orbit controls toggleable with `O`
   - Default and multiple preset views
