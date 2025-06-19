@@ -7,87 +7,6 @@ const loader = new THREE.TextureLoader();
 // Set up scene
 const scene = new THREE.Scene();
 
-// 🌟 Trail arrays – שובל מרכזי, שמאלי וימני
-const trailMain = [];
-const trailLeft = [];
-const trailRight = [];
-const maxTrailLength = 25;
-
-// 🔥 יצירת גיאומטריות וחומרים לקווים
-const trailGeometryMain = new THREE.BufferGeometry();
-const trailGeometryLeft = new THREE.BufferGeometry();
-const trailGeometryRight = new THREE.BufferGeometry();
-
-const trailMaterialMain = new THREE.LineBasicMaterial({
-  color: 0xff9900,          // כתום עמוק
-  transparent: true,
-  opacity: 0.7,
-  depthWrite: false
-});
-
-const trailMaterialLeft = new THREE.LineBasicMaterial({
-  color: 0xffcc66,          // זהוב בהיר
-  transparent: true,
-  opacity: 0.4,
-  depthWrite: false
-});
-
-const trailMaterialRight = new THREE.LineBasicMaterial({
-  color: 0xffcc66,          // גם זהוב
-  transparent: true,
-  opacity: 0.4,
-  depthWrite: false
-});
-
-// 🎯 יצירת קווים
-const trailLineMain = new THREE.Line(trailGeometryMain, trailMaterialMain);
-const trailLineLeft = new THREE.Line(trailGeometryLeft, trailMaterialLeft);
-const trailLineRight = new THREE.Line(trailGeometryRight, trailMaterialRight);
-
-scene.add(trailLineMain);
-scene.add(trailLineLeft);
-scene.add(trailLineRight);
-
-
-let basketball = null; 
-let moveLeft = false;
-let moveRight = false;
-let moveForward = false;
-let moveBackward = false;
-
-const realHoops = [];
-const movementSpeed = 0.2;
-
-let shotPower = 0.5;
-const minPower = 0.0;
-const maxPower = 1.0;
-const powerStep = 0.05;
-
-let shotsAttempted = 0;
-let shotsScored = 0;
-let score = 0;
-
-const cheerSound = new Audio('src/sounds/cheer.wav');
-const booSound = new Audio('src/sounds/boo.wav');
-const basketballsound = new Audio('src/sounds/basketball.wav');
-
-const collisionHoopSpheres = [];
-let currentTargetHoop = null;
-let shotHoopCenter = null;
-
-
-let isShooting = false;
-let velocity = new THREE.Vector3(); // מהירות הכדור (vx, vy, vz)
-const gravity = -9.8;
-const timeStep = 1 / 60; // פריים ב-60FPS
-
-const rimRight = new THREE.Vector3(15, 3.05, 0);   // הסל הימני
-const rimLeft  = new THREE.Vector3(-15, 3.05, 0);  // הסל השמאלי
-
-const fireworks = [];
-const clock = new THREE.Clock();
-
-
 // Set up camera with perspective projection
 const camera = new THREE.PerspectiveCamera(
   75, // field of view
@@ -356,29 +275,11 @@ const cameraTranslate = new THREE.Matrix4();
 cameraTranslate.makeTranslation(0, 15, 30);
 camera.applyMatrix4(cameraTranslate);
 
-
 // Orbit controls
 const controls = new OrbitControls(camera, renderer.domElement);
 let isOrbitEnabled = true;
 
-const feedbackElement = document.createElement('div');
-feedbackElement.style.position = 'absolute';
-feedbackElement.style.bottom = '100px';
-feedbackElement.style.left = '50%';
-feedbackElement.style.transform = 'translate(-50%, -50%)';
-feedbackElement.style.padding = '10px 20px';
-feedbackElement.style.fontSize = '30px';
-feedbackElement.style.fontWeight = 'bold';
-feedbackElement.style.color = 'white';
-feedbackElement.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-feedbackElement.style.borderRadius = '8px';
-feedbackElement.style.display = 'none';
-feedbackElement.style.zIndex = '9999';
-feedbackElement.style.fontFamily = 'Arial, sans-serif';
-
-document.body.appendChild(feedbackElement);
-
-// === Instructions Display (Bottom-Left Corner) ===
+// Instructions display
 const instructionsElement = document.createElement('div');
 instructionsElement.style.position = 'absolute';
 instructionsElement.style.bottom = '20px';
@@ -387,75 +288,31 @@ instructionsElement.style.color = 'white';
 instructionsElement.style.fontSize = '16px';
 instructionsElement.style.fontFamily = 'Arial, sans-serif';
 instructionsElement.style.textAlign = 'left';
-instructionsElement.style.backgroundColor = 'rgba(0, 0, 0, 0.4)';
-instructionsElement.style.padding = '10px';
-instructionsElement.style.border = '1px solid white';
-instructionsElement.style.borderRadius = '6px';
 instructionsElement.innerHTML = `
-  <h3 style="margin: 0 0 5px 0;">Controls:</h3>
-  <p style="margin: 0;">O – Toggle Orbit Camera</p>
+  <h3>Controls:</h3>
+  <p>O - Toggle orbit camera</p>
 `;
 document.body.appendChild(instructionsElement);
-
-// === Score, Power & Stats Display ===
-
-// === Box 1: Score & Power (Top-Right) ===
-const infoBoxTopRight = document.createElement('div');
-infoBoxTopRight.style.position = 'absolute';
-infoBoxTopRight.style.top = '20px';
-infoBoxTopRight.style.right = '20px';
-infoBoxTopRight.style.zIndex = '9999';
-infoBoxTopRight.style.padding = '10px';
-infoBoxTopRight.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-infoBoxTopRight.style.border = '1px solid white';
-infoBoxTopRight.style.fontSize = '16px';
-infoBoxTopRight.style.color = 'white';
-infoBoxTopRight.style.fontFamily = 'Arial, sans-serif';
-infoBoxTopRight.style.display = 'flex';
-infoBoxTopRight.style.flexDirection = 'column';
-infoBoxTopRight.style.gap = '6px';
-infoBoxTopRight.style.alignItems = 'flex-start';
-infoBoxTopRight.style.textAlign = 'left';
-
+// Create score display element for UI (top-right corner)
 const scoreElement = document.createElement('div');
 scoreElement.id = "score";
+
+// Positioning and styling
+scoreElement.style.position = 'absolute';
+scoreElement.style.top = '20px';
+scoreElement.style.right = '20px';
+scoreElement.style.zIndex = '9999';
+scoreElement.style.padding = '10px';
+scoreElement.style.fontSize = '20px';
+scoreElement.style.color = 'white';
+scoreElement.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+scoreElement.style.border = '1px solid white'; // Optional border for visibility
+
+// Initial score content
 scoreElement.innerText = 'Score: 0';
 
-const powerElement = document.createElement('div');
-powerElement.id = "power";
-powerElement.innerText = `Power: ${Math.round(shotPower * 100)}%`;
-
-infoBoxTopRight.appendChild(scoreElement);
-infoBoxTopRight.appendChild(powerElement);
-document.body.appendChild(infoBoxTopRight);
-
-// === Box 2: Stats (Top-Center) ===
-const statsBox = document.createElement('div');
-statsBox.style.position = 'absolute';
-statsBox.style.top = '20px';
-statsBox.style.left = '50%';
-statsBox.style.transform = 'translateX(-50%)';
-statsBox.style.zIndex = '9999';
-statsBox.style.padding = '10px';
-statsBox.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-statsBox.style.border = '1px solid white';
-statsBox.style.fontSize = '16px';
-statsBox.style.color = 'white';
-statsBox.style.fontFamily = 'Arial, sans-serif';
-statsBox.style.textAlign = 'center';
-
-const statsElement = document.createElement('div');
-statsElement.id = "stats";
-statsElement.innerHTML = `
-  Shots: 0<br>
-  Hits: 0<br>
-  Accuracy: 0.0%
-`;
-
-statsBox.appendChild(statsElement);
-document.body.appendChild(statsBox);
-
-
+// Add to DOM
+document.body.appendChild(scoreElement);
 
 // Handle keyboard input for camera control and orbit toggle
 function handleKeyDown(e) {
@@ -489,66 +346,14 @@ function handleKeyDown(e) {
     camera.position.set(25, 5, 0);
     camera.lookAt(0, 0, 0);
   }
-  
 }
-
-// תנועה עם חצים
-document.addEventListener('keydown', (e) => {
-  switch (e.key) {
-    case 'ArrowLeft': moveLeft = true; break;
-    case 'ArrowRight': moveRight = true; break;
-    case 'ArrowUp': moveForward = true; break;
-    case 'ArrowDown': moveBackward = true; break;
-
-    case 'w':
-    case 'W':
-      shotPower = Math.min(maxPower, shotPower + powerStep);
-      updatePowerDisplay();
-      break;
-
-    case 's':
-    case 'S':
-      shotPower = Math.max(minPower, shotPower - powerStep);
-      updatePowerDisplay();
-      break;
-
-    case ' ':
-      if (!isShooting) shootBall();
-      break;
-
-    case 'r':
-    case 'R':
-      if (basketball) {
-        basketball.position.set(0, 0.5, 0);  // מרכז המגרש
-        velocity.set(0, 0, 0);              // איפוס מהירות
-        isShooting = false;                 // ביטול מצב זריקה
-        shotPower = 0.5;                    // עוצמה ברירת מחדל
-        updatePowerDisplay();               // עדכון ה־UI
-        showFeedbackMessage("Ball reset");  
-      }
-      break;
-  }
-});
-
-
-document.addEventListener('keyup', (e) => {
-  switch (e.key) {
-    case 'ArrowLeft': moveLeft = false; break;
-    case 'ArrowRight': moveRight = false; break;
-    case 'ArrowUp': moveForward = false; break;
-    case 'ArrowDown': moveBackward = false; break;
-  }
-});
-
-
-
 
 // Creates a complete basketball hoop at the given X position (left or right)
 function createHoop(xPosition) {
-  const direction = xPosition === 15 ? 1 : -1;
+  const direction = xPosition === 15 ? 1 : -1; // Determine side: right (15) or left (-15)
 
   // === Transparent Backboard ===
-  const backboardGeometry = new THREE.BoxGeometry(0.05, 1.8, 3.5);
+  const backboardGeometry = new THREE.BoxGeometry(0.05, 1.8, 3.5); // Thin plane
   const backboardMaterial = new THREE.MeshPhongMaterial({
     color: 0xffffff,
     transparent: true,
@@ -561,7 +366,6 @@ function createHoop(xPosition) {
   backboard.renderOrder = 0;
   backboard.castShadow = true;
   scene.add(backboard);
-
 
   // === Draw rectangle outlines on backboard ===
   function createRectangleMesh(width, height, offsetX, lineWidth = 0.05) {
@@ -606,7 +410,7 @@ function createHoop(xPosition) {
   const rimMaterial = new THREE.MeshPhongMaterial({
     color: 0xff6600,
     transparent: false,
-    opacity: 0.8,
+    opacity: 1,
     depthWrite: true,
     depthTest: true
   });
@@ -617,11 +421,9 @@ function createHoop(xPosition) {
   rim.receiveShadow = true;
   rim.renderOrder = 2;
   scene.add(rim);
-  realHoops.push(rim);
-
 
   // === Metal Chain Net (curved) ===
-  const netMaterial = new THREE.LineBasicMaterial({ color: 0xaaaaaa });
+  const netMaterial = new THREE.LineBasicMaterial({ color: 0xaaaaaa }); // Light gray metallic
   const netGroup = new THREE.Group();
   const rimRadius = 0.5;
   const netHeight = 0.8;
@@ -636,7 +438,7 @@ function createHoop(xPosition) {
     const z2 = innerRadius * Math.sin(angle);
     const midX = (x1 + x2) / 2;
     const midZ = (z1 + z2) / 2;
-    const midY = -netHeight * 0.4;
+    const midY = -netHeight * 0.4; // Slight dip in the middle
 
     const points = [
       new THREE.Vector3(x1, 0, z1),
@@ -673,7 +475,7 @@ function createHoop(xPosition) {
   const armX = (actualBoardX + actualPoleX) / 2;
   const armY = 3.3;
   arm.position.set(armX, armY, 0);
-  arm.rotation.z = direction * -Math.PI / 12;
+  arm.rotation.z = direction * -Math.PI / 12; // ~15 degrees
   arm.castShadow = true;
   scene.add(arm);
 
@@ -683,46 +485,7 @@ function createHoop(xPosition) {
   } else {
     addLogoLeft(backboard);
   }
-
-  createHoopCollisionSpheres(xPosition);
-
 }
-
-
-function createHoopCollisionSpheres(xPosition) {
-  const rimY = 3.05;
-  const rimRadius = 0.5;     // כמו בטבעת שלך
-  const ballRadius = 0.04;
-  const segments = 45;       // לפי החישוב שלנו
-
-  const direction = xPosition === 15 ? 1 : -1;
-  const centerX = xPosition + direction * -0.55; // כמו הטבעת עצמה
-  const centerZ = 0;
- 
-  const material = new THREE.MeshPhongMaterial({
-    color: 0x00ff00,
-    transparent: true,
-    opacity: 0.0  // או כל ערך בין 0 (שקוף לגמרי) ל־1 (אטום)
-  });// ירוק
-
-  for (let i = 0; i < segments; i++) {
-    const angle = (i / segments) * Math.PI * 2;
-    const x = centerX + rimRadius * Math.cos(angle);
-    const z = centerZ + rimRadius * Math.sin(angle);
-
-    const sphere = new THREE.Mesh(
-      new THREE.SphereGeometry(ballRadius, 16, 16),
-      material
-    );
-
-    sphere.position.set(x, rimY, z);
-    sphere.castShadow = true;
-    scene.add(sphere);
-    collisionHoopSpheres.push(sphere);
-  }
-  
-}
-
 
 // Adds a logo text (default: "MB") to the LEFT side backboard
 function addLogoLeft(backboard, text = "MB") {
@@ -918,28 +681,27 @@ function createScoreboard() {
 }
 
 function createBasketball() {
-  const ballRadius = 0.35;
+  const ballRadius = 0.5;
 
-  // יצירת הגיאומטריה והמרקם של הכדור
+  // 1) Create the basketball geometry and apply texture
   const ballGeometry = new THREE.SphereGeometry(ballRadius, 64, 64);
   const ballTexture = loader.load('src/textures/basketball.png');
   ballTexture.wrapS = THREE.ClampToEdgeWrapping;
   ballTexture.wrapT = THREE.ClampToEdgeWrapping;
+  ballTexture.repeat.set(1, 1);
 
   const ballMaterial = new THREE.MeshPhongMaterial({
     map: ballTexture,
     shininess: 50,
   });
 
-  const ballMesh = new THREE.Mesh(ballGeometry, ballMaterial);
-  ballMesh.castShadow = true;
-  ballMesh.receiveShadow = true;
+  const basketball = new THREE.Mesh(ballGeometry, ballMaterial);
+  basketball.position.set(0, ballRadius + 0.11, 0);
+  basketball.castShadow = true;
+  basketball.receiveShadow = true;
+  scene.add(basketball);
 
-  // ✅ יצירת קבוצה שכוללת את כל מרכיבי הכדור
-  const basketballGroup = new THREE.Group();
-  basketballGroup.add(ballMesh);
-
-  // יצירת התפרים
+  // 2) Create circular seams (thick black lines)
   const segs = 64;
   const offset = ballRadius + 0.002;
 
@@ -960,10 +722,12 @@ function createBasketball() {
       pts.push(new THREE.Vector3(x, y, z));
     }
 
+    // Use TubeGeometry instead of LineLoop for thickness
     const curve = new THREE.CatmullRomCurve3(pts, true);
     const geometry = new THREE.TubeGeometry(curve, 128, 0.008, 12, true);
     const material = new THREE.MeshBasicMaterial({ color: 0x000000 });
-    return new THREE.Mesh(geometry, material);
+    const tube = new THREE.Mesh(geometry, material);
+    return tube;
   }
 
   function makeVerticalSeamAtAngle(angleRadians) {
@@ -972,404 +736,33 @@ function createBasketball() {
     return seam;
   }
 
-  function makeVerticalSeamAroundX(angleRadians) {
+  function makeVerticalSeamAroundX(rotationAngle) {
     const seam = makeSeamCircle('XZ');
-    seam.rotation.x = angleRadians;
+    seam.rotation.x = rotationAngle;
     return seam;
   }
 
-  // הוספת התפרים לקבוצה
-  basketballGroup.add(makeVerticalSeamAtAngle(Math.PI / 2));
-  basketballGroup.add(makeVerticalSeamAtAngle(-Math.PI / 2));
-  basketballGroup.add(makeVerticalSeamAroundX(Math.PI / 4));
-  basketballGroup.add(makeVerticalSeamAroundX(-Math.PI / 4));
-  basketballGroup.add(makeSeamCircle('XZ')); // Equator
-
-  // הצבה בסצנה
-  basketballGroup.position.set(0, ballRadius + 0.11, 0);
-  scene.add(basketballGroup);
-
-  // שמירה ככדור הגלובלי שלך
-  basketball = basketballGroup;
+  // Add all seams to the ball
+  basketball.add(makeVerticalSeamAtAngle(Math.PI / 2));
+  basketball.add(makeVerticalSeamAtAngle(-Math.PI / 2));
+  basketball.add(makeVerticalSeamAroundX(Math.PI / 4));
+  basketball.add(makeVerticalSeamAroundX(-Math.PI / 4));
+  basketball.add(makeSeamCircle('XZ')); // Equator
 }
-
-
-function updatePowerDisplay() {
-  const el = document.getElementById("power");
-  if (el) el.innerText = `Power: ${Math.round(shotPower * 100)}%`;
-}
-
-
-function shootBall() {
-  if (!basketball) return;
-
-  isShooting = true;
-  collidedDuringShot = false;
-  scoredThisShot = false; // ✅ אפסנו
-  shotsAttempted++;
-  updateScoreDisplay();
-
-
-  const ballPos = basketball.position.clone();
-  currentTargetHoop = getNearestHoop(ballPos);
-  shotHoopCenter = new THREE.Vector3(currentTargetHoop.x, 3.05, currentTargetHoop.z);
-
-  const horizontalDir = new THREE.Vector3(
-    currentTargetHoop.x - ballPos.x,
-    0,
-    currentTargetHoop.z - ballPos.z
-  ).normalize();
-
-  const horizontalSpeed = shotPower * 6;
-  const verticalSpeed = shotPower * 20;
-
-  velocity = new THREE.Vector3(
-    horizontalDir.x * horizontalSpeed,
-    verticalSpeed,
-    horizontalDir.z * horizontalSpeed
-  );
-}
-
-
-function getNearestHoop(ballPos) {
-  const distToRight = ballPos.distanceTo(rimRight);
-  const distToLeft = ballPos.distanceTo(rimLeft);
-  return distToRight < distToLeft ? rimRight : rimLeft;
-}
-
-
 
 
 // Add key listener to handle camera controls or other events
 document.addEventListener('keydown', handleKeyDown);
 
-let prevY = 0;
-let collidedDuringShot = false;
-let scoredThisShot = false;
-let hitBackboard = false;
-
-
+// Animation function
 function animate() {
   requestAnimationFrame(animate);
-  const delta = clock.getDelta();
-
+  
+  // Update controls
   controls.enabled = isOrbitEnabled;
   controls.update();
-
-  // 🎇 Update fireworks
-  for (let i = fireworks.length - 1; i >= 0; i--) {
-    if (!fireworks[i](delta)) fireworks.splice(i, 1);
-  }
-
-  if (basketball) {
-    const pos = basketball.position;
-
-    if (!isShooting) {
-      if (moveLeft && pos.x > -14.5) pos.x -= movementSpeed;
-      if (moveRight && pos.x < 14.5) pos.x += movementSpeed;
-      if (moveForward && pos.z > -7.1) pos.z -= movementSpeed;
-      if (moveBackward && pos.z < 7.1) pos.z += movementSpeed;
-
-      // 🧹 Clear trail when ball is not shooting
-      resetTrails(); 
-    }
-
-    if (isShooting) {
-      velocity.y += gravity * timeStep;
-      basketball.position.add(velocity.clone().multiplyScalar(timeStep));
-
-      // 💫 Add to trail – חדש: 3 שובלים
-      // 💫 Add to trail – חדש: 3 שובלים
-      const pos = basketball.position.clone();
-      const direction = velocity.clone().normalize();
-      const sideways = new THREE.Vector3().crossVectors(direction, new THREE.Vector3(0, 1, 0)).multiplyScalar(0.2);
-
-      trailMain.push(pos.clone());
-      trailLeft.push(pos.clone().add(sideways));
-      trailRight.push(pos.clone().sub(sideways));
-
-      if (trailMain.length > maxTrailLength) trailMain.shift();
-      if (trailLeft.length > maxTrailLength - 5) trailLeft.shift();
-      if (trailRight.length > maxTrailLength - 5) trailRight.shift();
-
-      // עדכון גיאומטריה – גרסה לקווים
-      const updateTrailGeometry = (geometry, trailPoints) => {
-        geometry.setFromPoints(trailPoints);
-        geometry.attributes.position.needsUpdate = true;
-      };
-
-      updateTrailGeometry(trailGeometryMain, trailMain);
-      updateTrailGeometry(trailGeometryLeft, trailLeft);
-      updateTrailGeometry(trailGeometryRight, trailRight);
-
-      }
-
-      // 🌀 Rotation
-      const moveDir = velocity.clone().normalize();
-      const up = new THREE.Vector3(0, 1, 0);
-      const rotationAxis = new THREE.Vector3().crossVectors(moveDir, up).normalize();
-      const rotationSpeed = velocity.length();
-      basketball.rotateOnAxis(rotationAxis, rotationSpeed * 1.0 * timeStep);
-
-      // Boundaries
-      if (pos.z < -7.1) { basketball.position.z = -7.1; if (velocity.z < 0) velocity.z *= -0.6; }
-      if (pos.z > 7.1)  { basketball.position.z = 7.1;  if (velocity.z > 0) velocity.z *= -0.6; }
-      if (pos.x < -14.5){ basketball.position.x = -14.5;if (velocity.x < 0) velocity.x *= -0.6; }
-      if (pos.x > 14.5) { basketball.position.x = 14.5; if (velocity.x > 0) velocity.x *= -0.6; }
-
-      // 💥 Collision with hoop spheres
-      checkHoopSphereCollision();
-
-      // 🔍 Backboard collision
-      const ballRadius = 0.35;
-      const boardCenterX = -15;
-      const boardYCenter = 3.7;
-      const boardZCenter = 0;
-      const boardHeight = 1.8;
-      const boardDepth = 3.5;
-
-      const boardRightEdge = boardCenterX + 0.2;
-      const boardYMin = boardYCenter - boardHeight / 2 + 0.8;
-      const boardYMax = boardYCenter + boardHeight / 2;
-      const boardZMin = boardZCenter - boardDepth / 2;
-      const boardZMax = boardZCenter + boardDepth / 2;
-
-      const ballLeftEdge = pos.x - ballRadius;
-      const ballYMin = pos.y - ballRadius;
-      const ballYMax = pos.y + ballRadius;
-      const ballZMin = pos.z - ballRadius;
-      const ballZMax = pos.z + ballRadius;
-
-      const inY = ballYMax >= boardYMin && ballYMin <= boardYMax;
-      const inZ = ballZMax >= boardZMin && ballZMin <= boardZMax;
-      const hitX = boardRightEdge >= ballLeftEdge;
-
-      if (hitX && inY && inZ && !hitBackboard) {
-        console.log("💥 פגיעה בלוח השמאלי!");
-        hitBackboard = true;
-        basketballsound.currentTime = 0;
-        basketballsound.play();
-      }
-
-      // 🎯 Detect scoring
-      const rimY = 3.05;
-      const isGoingDown = velocity.y < 0;
-      const justPassedRim = prevY > rimY && pos.y <= rimY;
-
-      if (isGoingDown && justPassedRim && !scoredThisShot) {
-        const rimCenter = shotHoopCenter;
-        const horizontalDist = new THREE.Vector2(pos.x - rimCenter.x, pos.z - rimCenter.z).length();
-        const isFallingStraight = Math.abs(velocity.x) < 6 && Math.abs(velocity.z) < 6;
-
-        if (horizontalDist < 0.7 && Math.abs(pos.y - rimY) < 0.3 && isFallingStraight) {
-          scoredThisShot = true;
-          shotsScored++;
-          score += 2;
-          updateScoreDisplay();
-          cheerSound.currentTime = 0;
-          cheerSound.play();
-
-          if (!collidedDuringShot && !hitBackboard) {
-            showFeedbackMessage("SWISH!", 'gold');
-            setTimeout(() => createHoopFireworks(), 200);
-            createHoopFireworks();
-          } else {
-            showFeedbackMessage("SHOT MADE!", 'lightgreen');
-          }
-        } else {
-          booSound.currentTime = 0;
-          booSound.play();
-          showFeedbackMessage("MISSED SHOT", 'tomato');
-        }
-      }
-
-      // 🪵 Bounce on floor
-      if (pos.y <= 0.5) {
-        basketball.position.y = 0.5;
-        if (Math.abs(velocity.y) > 1) {
-          velocity.y *= -0.6;
-          velocity.x *= 0.5;
-          velocity.z *= 0.5;
-          basketballsound.currentTime = 0;
-          basketballsound.play();
-        } else {
-          velocity.set(0, 0, 0);
-          isShooting = false;
-        }
-
-        // Reset backboard flag
-        hitBackboard = false;
-        resetTrails();
-      }
-    }
-
-    prevY = basketball.position.y;
-    renderer.render(scene, camera);
-  }
-
-function checkHoopSphereCollision() {
-  const ballRadius = 0.35;
-  const sphereRadius = 0.04;
-  const minDist = ballRadius + sphereRadius;
-
-  for (let sphere of collisionHoopSpheres) {
-    const dist = basketball.position.distanceTo(sphere.position);
-
-    if (dist < minDist) {
-      collidedDuringShot = true;
-
-      const direction = basketball.position.clone().sub(sphere.position).normalize();
-      const corrected = sphere.position.clone().add(direction.multiplyScalar(minDist));
-      basketball.position.copy(corrected);
-      velocity.copy(direction.multiplyScalar(velocity.length() * 0.9));
-
-      console.log("💥 התנגשות עם ספרה בטבעת!");
-      basketballsound.currentTime = 0;
-      basketballsound.play();
-      return true;
-    }
-  }
-  return false;
-}
-
-
-
-function updateScoreDisplay() {
-  const stats = document.getElementById("stats");
-  const power = document.getElementById("power");
-  const scoreElement = document.getElementById("score"); // ✅ הוספנו שורה זו
-  if (!stats || !power || !scoreElement) return;
-
-  const percentage = shotsAttempted === 0
-    ? 0
-    : ((shotsScored / shotsAttempted) * 100).toFixed(1);
-
-  stats.innerHTML = `
-    Shots: ${shotsAttempted}<br>
-    Hits: ${shotsScored}<br>
-    Accuracy: ${percentage}%
-  `;
-  power.innerText = `Power: ${Math.round(shotPower * 100)}%`;
-  scoreElement.innerText = `Score: ${score}`; // ✅ גם כאן
-}
-
-function showFeedbackMessage(text, color = 'white') {
-  // אם אין feedbackElement עדיין - תצרי אותו רק פעם אחת
-  let feedbackElement = document.getElementById('feedback');
-  if (!feedbackElement) {
-    feedbackElement = document.createElement('div');
-    feedbackElement.id = 'feedback';
-    feedbackElement.style.position = 'absolute';
-    feedbackElement.style.top = '50%';
-    feedbackElement.style.left = '50%';
-    feedbackElement.style.transform = 'translate(-50%, -50%)';
-    feedbackElement.style.padding = '20px 30px';
-    feedbackElement.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-    feedbackElement.style.border = '2px solid white';
-    feedbackElement.style.borderRadius = '10px';
-    feedbackElement.style.color = color;
-    feedbackElement.style.fontSize = '26px';
-    feedbackElement.style.fontFamily = 'Arial, sans-serif';
-    feedbackElement.style.textAlign = 'center';
-    feedbackElement.style.zIndex = '99999';
-    feedbackElement.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-    feedbackElement.style.opacity = '0';
-
-    document.body.appendChild(feedbackElement);
-  }
-
-  // הצגה עם אנימציה
-  feedbackElement.innerText = text;
-  feedbackElement.style.color = color;
-  feedbackElement.style.opacity = '1';
-  feedbackElement.style.transform = 'translate(-50%, -50%) scale(1.1)';
-
-  setTimeout(() => {
-    feedbackElement.style.opacity = '0';
-    feedbackElement.style.transform = 'translate(-50%, -50%) scale(0.9)';
-  }, 2000);
-}
-
-
-function createFirework(x, y, z) {
-  const count = 80;
-  const geometry = new THREE.BufferGeometry();
-  const positions = [];
-  const velocities = [];
-  const colors = [];
-
-  for (let i = 0; i < count; i++) {
-    positions.push(x, y, z);
-
-    velocities.push(
-      (Math.random() - 0.5) * 6,
-      Math.random() * 10,  // יותר גובה
-      (Math.random() - 0.5) * 6
-    );
-
-    const color = new THREE.Color(`hsl(${Math.random() * 360}, 100%, 60%)`);
-    colors.push(color.r, color.g, color.b);
-  }
-
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute('velocity', new THREE.Float32BufferAttribute(velocities, 3));
-  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3)); // 🎨 צבע אישי
-
-  const material = new THREE.PointsMaterial({
-    size: 0.1,
-    vertexColors: true, // ⚠️ חשוב! כדי לאפשר צבעים נפרדים
-    transparent: true,
-    opacity: 1.0,
-    depthWrite: false
-  });
-
-  const points = new THREE.Points(geometry, material);
-  scene.add(points);
-
-  let lifetime = 1.5;
-
-  function updateFirework(delta) {
-    lifetime -= delta;
-    material.opacity = Math.max(0, lifetime / 1.5); // פייד
-
-    if (lifetime <= 0) {
-      scene.remove(points);
-      return false;
-    }
-
-    const pos = geometry.attributes.position;
-    const vel = geometry.attributes.velocity;
-
-    for (let i = 0; i < pos.count; i++) {
-      vel.array[i * 3 + 1] += gravity * delta;
-
-      pos.array[i * 3 + 0] += vel.array[i * 3 + 0] * delta;
-      pos.array[i * 3 + 1] += vel.array[i * 3 + 1] * delta;
-      pos.array[i * 3 + 2] += vel.array[i * 3 + 2] * delta;
-    }
-
-    pos.needsUpdate = true;
-    return true;
-  }
-
-  fireworks.push(updateFirework);
-}
-
-
-
-
-function createHoopFireworks() {
-  const sampled = collisionHoopSpheres.filter((_, i) => i % 0.5 === 0); // כל חמישית בערך
-  for (const sphere of sampled) {
-    const pos = sphere.position;
-    createFirework(pos.x, pos.y, pos.z);
-  }
-}
-
-function resetTrails() {
-  trailMain.length = 0;
-  trailLeft.length = 0;
-  trailRight.length = 0;
+  
+  renderer.render(scene, camera);
 }
 
 animate();
