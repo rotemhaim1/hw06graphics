@@ -70,11 +70,6 @@ This project is an interactive 3D basketball court built with [THREE.js](https:/
 - `src/textures/` – Textures for court and basketball
 - `CONFIGURATION.md` – Project and code style guidelines
 
-## Known Issues or Limitations
-- The basketball is static (no physics or shooting yet)
-- No interactive scoring or ball controls (to be implemented in HW06)
-- Some visual details may differ slightly from real-world courts for clarity
-
 ## Sources of External Assets
 - [THREE.js](https://threejs.org/) (core library)
 - [Basketball texture](src/textures/basketball.png)
