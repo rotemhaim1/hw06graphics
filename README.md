@@ -1,137 +1,105 @@
-# HW05 – Interactive Basketball Court with WebGL and Three.js
+# Basketball Court 3D – THREE.js
 
-**Semester:** Spring 2025  
-**Course:** Computer Graphics  
-**Student Name :** May Bourshan
+## Group Members
+- Eden Zehavy 314832270
+- Rotem Haim 314652496
 
----
+## Overview
+This project is an interactive 3D basketball court built with [THREE.js](https://threejs.org/). It features a detailed court, hoops, bleachers, lighting, and interactive camera controls. The scene is fully responsive and visually realistic, with shadows, textures, and user-friendly controls.
 
-## 🏀 Overview
+## How to Run
+1. **Install dependencies** (if any):
+   - This project uses only client-side JS and THREE.js (included via import/module).
+2. **Start the application:**
+   ```bash
+   node index.js
+   ```
+   The server will run on port 8000 by default.
+3. **Open your browser:**
+   - Go to [http://localhost:8000](http://localhost:8000)
 
-This project implements a fully interactive 3D basketball court scene using WebGL and Three.js, meeting all mandatory requirements of HW05 and going far beyond with rich bonus features.
+## Features & Requirements Checklist
+### Mandatory Infrastructure (HW05)
+- [x] Properly sized basketball court (rectangular, ~2:1 ratio, wood color)
+- [x] Court markings: center circle, three-point lines (curved), center line, clear white lines
+- [x] Two basketball hoops:
+  - [x] Backboard (white, partially transparent)
+  - [x] Orange rim at regulation height
+  - [x] Net with line segments (at least 8)
+  - [x] Support structure (pole and arms) behind backboard
+  - [x] Hoops face center court
+- [x] Static basketball:
+  - [x] Orange with black seams
+  - [x] Proper size, geometry, and material
+  - [x] Positioned at center court
+- [x] Camera and lighting:
+  - [x] Appropriate lighting with shadows
+  - [x] Interactive orbit camera controls (toggle with 'O')
+  - [x] Preset camera positions (A, B, C, D)
+  - [x] Responsive to window resizing
+- [x] UI framework:
+  - [x] HTML containers for future score and controls display
+  - [x] Basic CSS styling for UI elements
+  - [x] UI elements positioned appropriately
+- [x] Code style: ES modules, camelCase, comments, organized structure
 
----
+### Bonus Features (Optional, implemented)
+- [x] Stadium environment (bleachers on all sides)
+- [x] Scoreboard with static timer - will be non-static in HW6
+- [x] Enhanced lighting (multiple spotlights, stadium light)
+- [x] Multiple camera preset positions with popup indicator
+- [x] Textured surfaces for court and basketball
 
-## ✅ How to Run
+### Not Included (for HW06)
+- Interactive basketball controls (Arrow Keys, W/S, Spacebar, R)
+- Physics-based movement, shooting, scoring
 
-1. Clone or download the project files  
-2. Open `index.html` in a modern browser  
-   *(If fonts or textures are local, run with a local server like `Live Server` in VSCode)*
-3. Use these controls:
-   - `O` – Toggle orbit camera
-   - `1` – Top-down view
-   - `2` – Behind scoreboard view
-   - `3` – Classic angled view
-   - `4` – Sideline view
+## Controls
+- **O**: Toggle orbit camera controls ("Camera Locked" message appears when locked)
+- **A**: Initial view (in front of the signature)
+- **B**: Behind the right hoop
+- **C**: Behind the left hoop
+- **D**: Top-down (bird's eye) view
+- After pressing A/B/C/D, a popup will indicate the camera mode
 
----
+## Project Structure
+- `index.js` – Entry point/server
+- `index.html` – Main HTML file
+- `src/hw5.js` – Main scene and logic (all 3D, controls, and rendering)
+- `src/OrbitControls.js` – Camera orbit controls
+- `src/textures/` – Textures for court and basketball
+- `CONFIGURATION.md` – Project and code style guidelines
 
-## 🎯 Mandatory Features Implemented
+## Known Issues or Limitations
+- The basketball is static (no physics or shooting yet)
+- No interactive scoring or ball controls (to be implemented in HW06)
+- Some visual details may differ slightly from real-world courts for clarity
 
-- ✅ Full-size court with:
-  - Center circle
-  - Center line
-  - Three-point arcs (both sides)
-  - Court boundaries
-- ✅ Two basketball hoops with:
-  - Transparent backboards
-  - Orange rims
-  - Metal chain nets (20 segments)
-  - Back support poles and angled arms
-- ✅ Realistic basketball at center court:
-  - Orange texture with leather-like appearance
-  - 4 seam lines: 2 horizontal, 2 vertical (using TubeGeometry)
-  - Correct size and geometry (radius: 0.5)
-  - Two logos (Nike and NBA) added directly on the ball surface
-- ✅ Camera setup:
-  - Orbit controls toggleable with `O`
-  - Default and multiple preset views
-- ✅ UI framework:
-  - Score display (`HOME : 0   AWAY : 0`)
-  - Live countdown timer (10:00 → 0:00)
-  - On-screen controls instructions
-  - Styled HTML elements with CSS
+## Sources of External Assets
+- [THREE.js](https://threejs.org/) (core library)
+- [Basketball texture](src/textures/basketball.png)
+- [Wood floor texture](src/textures/wood_floor.jpg)
+- Fonts loaded from [threejs.org](https://threejs.org/examples/fonts/)
 
----
+## Screenshots (MANDATORY)
+Include the following screenshots in your submission:
+- [ ] Overall view of the basketball court with hoops
+- [ ] Close-up view of basketball hoops with nets
+- [ ] View showing the basketball positioned at center court
+- [ ] View demonstrating camera controls functionality (e.g., "Camera Locked" message or camera popup)
 
-## 🌟 Bonus Features (Full 10 Points Achieved)
+## Submission Notes
+- Submit via a public GitHub repository (recommended) or as a zip file
+- Include all source code, textures, and screenshots
+- Ensure this README is up to date and complete
 
-### 🏀 Detailed Court Markings
-- Painted key area ("The Paint") in red with white outline
-- Free-throw arcs using curved lines
-- Full court border, center line, 3-point arcs
-
-### 🧱 Realistic Textures
-- Wooden floor texture on the court
-- Basketball texture with leather-like surface
-
-### 💡 Advanced Lighting
-- Ambient + directional light
-- Hemisphere light for sky-ground blend
-- Three spotlights:
-  - 2 on each hoop
-  - 1 from above center court
-- All lights support shadows
-
-### 🏗️ Detailed Hoop Design
-- Backboards with white border outlines
-- Orange torus rims
-- Metal chain nets with smooth curve simulation
-- Support pole + diagonal arm
-- Logos ("MB") on each backboard – one mirrored
-
-### 🏟️ Stadium Environment
-- Full bleachers (stadium seating) on all sides
-- Large scoreboard with:
-  - Static score text
-  - Dynamic countdown timer (`TextGeometry`)
-- External score UI (`div#score`) in top corner
-- HTML UI for user instructions
-
-### 🎥 Multiple Camera Presets
-- 4 view presets available with keys `1` to `4`
-
-## 📸 Screenshots
-
-### 🏀 Full court view  
-(*This is the default camera preset when pressing `3`*)  
-![Full Court](screenshots/full_court.png)
-
-### 🔍 Close-up of basketball hoop with net  
-![Hoop Closeup](screenshots/hoop_closeup.png)
-
-### 🎯 Basketball positioned at center court  
-![Ball Center](screenshots/basketball_closeup.png)
-
-### 🎥 Camera controls in action  
-The following views demonstrate the working camera presets triggered by keys `1`, `2`, and `4`:
-
-- **Top-down view (key `1`)**  
-  ![Top View](screenshots/press_1.png)
-
-- **Behind scoreboard view (key `2`)**  
-  ![Back View](screenshots/press_2.png)
-
-- **Sideline view (key `4`)**  
-  ![Side View](screenshots/press_4.png)
+## References
+- [THREE.js Documentation](https://threejs.org/docs/)
+- [Three.js Examples](https://threejs.org/examples/)
+- [Discover Three.js](https://discoverthreejs.com/)
+- Standard basketball court: 28m x 15m (92ft x 50ft)
+- Standard rim height: 3.05m (10ft)
 
 ---
 
-## ⚠️ Known Issues
-
-- No known issues. Fully tested on Chrome and Edge.
-
----
-
-## 🔗 External Assets Used
-
-- `wood_floor.jpg` — wooden floor texture
-- `basketball.jpg` — ball texture
-- [Three.js Helvetiker font](https://threejs.org/examples/fonts/helvetiker_regular.typeface.json)
-
----
-
-## 📝 Notes
-
-All components were implemented from scratch with custom geometry and logic, including the scoreboard timer, net curves, and dynamic text updates.
-
+**Authors:** Eden Zehavy & Rotem Haim 
