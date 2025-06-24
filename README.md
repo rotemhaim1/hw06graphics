@@ -77,11 +77,18 @@ This project is an interactive 3D basketball court built with [THREE.js](https:/
 - Fonts loaded from [threejs.org](https://threejs.org/examples/fonts/)
 
 ## Screenshots (MANDATORY)
-Include the following screenshots in your submission:
-- [ ] Overall view of the basketball court with hoops
-- [ ] Close-up view of basketball hoops with nets
-- [ ] View showing the basketball positioned at center court
-- [ ] View demonstrating camera controls functionality (e.g., "Camera Locked" message or camera popup)
+
+### Overall view of the basketball court with hoops
+![Overall view](screenshots/image1.png)
+
+### Close-up view of basketball hoops with nets
+![Hoop closeup](screenshots/image2.png)
+
+### Basketball positioned at center court
+![Center ball](screenshots/image3.png)
+
+### Camera controls functionality
+![Camera controls](screenshots/image4.png)
 
 ## Submission Notes
 - Submit via a public GitHub repository (recommended) or as a zip file

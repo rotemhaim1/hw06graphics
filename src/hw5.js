@@ -393,6 +393,15 @@ function createHoop(xPosition) {
   pole.castShadow = true;
   scene.add(pole);
 
+  // === Base/Floor Beneath Pole ===
+  const baseGeo = new THREE.BoxGeometry(1.2, 0.2, 1.2);
+  const baseMat = new THREE.MeshPhongMaterial({ color: 0x666666 });
+  const base = new THREE.Mesh(baseGeo, baseMat);
+  base.position.set(actualPoleX, 0.1, 0);
+  base.castShadow = true;
+  base.receiveShadow = true;
+  scene.add(base);
+
   // === Diagonal Arm Between Pole and Backboard ===
   const armLength   = Math.abs(actualPoleX - actualBoardX);
   const armGeo      = new THREE.BoxGeometry(armLength, 0.05, 0.05);
@@ -681,6 +690,11 @@ camera.applyMatrix4(cameraTranslate);
 
 // Orbit controls
 const controls = new OrbitControls(camera, renderer.domElement);
+controls.screenSpacePanning = true;
+controls.enablePan = true;
+controls.enableZoom = true;
+controls.zoomSpeed = 2.0;
+controls.panSpeed = 2.0;
 let isOrbitEnabled = true;
 
 // Camera lock indicator
@@ -736,31 +750,38 @@ function showCameraPopup(message) {
 function handleKeyDown(e) {
   if (e.key === 'o') {
     isOrbitEnabled = !isOrbitEnabled;
-    // Show/hide camera lock indicator
     cameraLockIndicator.style.display = isOrbitEnabled ? 'none' : 'block';
   }
-  if (e.key === 'a') { 
-    // Initial view - in front of the signature (Eden Zehavy & Rotem Haim)
-    camera.position.set(0, 15, 30); 
-    camera.lookAt(0, 0, 0); 
+  if (e.key === 'a') {
+    // Strict initial view
+    camera.position.set(0, 15, 30);
+    camera.lookAt(0, 0, 0);
+    controls.target.set(0, 0, 0);
+    controls.update();
     showCameraPopup('Camera A');
   }
-  if (e.key === 'b') { 
-    // Behind the right hoop (x = 15)
-    camera.position.set(15, 5, 15); 
-    camera.lookAt(15, 3, 0); 
+  if (e.key === 'b') {
+    // Strict behind the right hoop
+    camera.position.set(15, 5, 15);
+    camera.lookAt(15, 3, 0);
+    controls.target.set(15, 3, 0);
+    controls.update();
     showCameraPopup('Camera B');
   }
-  if (e.key === 'c') { 
-    // Behind the left hoop (x = -15)
-    camera.position.set(-15, 5, 15); 
-    camera.lookAt(-15, 3, 0); 
+  if (e.key === 'c') {
+    // Strict behind the left hoop
+    camera.position.set(-15, 5, 15);
+    camera.lookAt(-15, 3, 0);
+    controls.target.set(-15, 3, 0);
+    controls.update();
     showCameraPopup('Camera C');
   }
-  if (e.key === 'd') { 
-    // From above
-    camera.position.set(0, 30, 0); 
-    camera.lookAt(0, 0, 0); 
+  if (e.key === 'd') {
+    // Strict from above
+    camera.position.set(0, 30, 0);
+    camera.lookAt(0, 0, 0);
+    controls.target.set(0, 0, 0);
+    controls.update();
     showCameraPopup('Camera D');
   }
 }
