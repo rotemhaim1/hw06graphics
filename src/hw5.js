@@ -35,13 +35,28 @@ let timerMesh = null;
 let remainingSeconds = 600; // 10 minutes = 600 seconds
 let updateScoreboardTimer = null; // function to update scoreboard timer
 
+// --- Rim/Hoop Data ---
+const RIM_RADIUS = 0.5;
+const RIM_HEIGHT = 3.05;
+const LEFT_RIM = { x: -15 + 0.55, y: RIM_HEIGHT, z: 0 };
+const RIGHT_RIM = { x: 15 - 0.55, y: RIM_HEIGHT, z: 0 };
+
+
+let lastShotScored = false; // For feedback
+
 // --- Scene Creation Functions ---
 
 function createFloor() {
   const floorTexture = loader.load('src/textures/wood_floor.jpg');
   floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
   floorTexture.repeat.set(8, 5); // More repeats for larger floor
-  const courtMaterial = new THREE.MeshPhongMaterial({ map: floorTexture, shininess: 10 });
+  const courtMaterial = new THREE.MeshPhongMaterial({
+    map: floorTexture,
+    shininess: 10,
+    polygonOffset: true,
+    polygonOffsetFactor: 1,
+    polygonOffsetUnits: 1
+  });
   // Expanded floor
   const floorGeometry = new THREE.BoxGeometry(60, 0.2, 50);
   const floor = new THREE.Mesh(floorGeometry, courtMaterial);
@@ -50,7 +65,7 @@ function createFloor() {
 
   // Add white edge lines for the 30x15 court boundary
   const edgeLineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
-  const y = 0.11; // Slightly above the floor
+  const y = 0.12; // Slightly above the floor, below the ball
   const halfCourtWidth = 15;
   const halfCourtDepth = 7.5;
   const edgePoints = [
@@ -64,6 +79,7 @@ function createFloor() {
     new THREE.BufferGeometry().setFromPoints(edgePoints),
     edgeLineMaterial
   );
+  edgeLine.renderOrder = 1;
   scene.add(edgeLine);
 }
 
@@ -90,18 +106,22 @@ function createCourtLines() {
   const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
   // Mid-court line
   const centerLineGeometry = new THREE.BufferGeometry().setFromPoints([
-    new THREE.Vector3(0, 0.11, -7.5),
-    new THREE.Vector3(0, 0.11, 7.5)
+    new THREE.Vector3(0, 0.12, -7.5),
+    new THREE.Vector3(0, 0.12, 7.5)
   ]);
-  scene.add(new THREE.Line(centerLineGeometry, lineMaterial));
+  const centerLine = new THREE.Line(centerLineGeometry, lineMaterial);
+  centerLine.renderOrder = 1;
+  scene.add(centerLine);
   // Center circle
   const circlePoints = [];
   const radius = 2;
   for (let i = 0; i <= 64; i++) {
     const theta = (i / 64) * Math.PI * 2;
-    circlePoints.push(new THREE.Vector3(radius * Math.cos(theta), 0.11, radius * Math.sin(theta)));
+    circlePoints.push(new THREE.Vector3(radius * Math.cos(theta), 0.12, radius * Math.sin(theta)));
   }
-  scene.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(circlePoints), lineMaterial));
+  const centerCircle = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(circlePoints), lineMaterial);
+  centerCircle.renderOrder = 1;
+  scene.add(centerCircle);
   // Three-point arcs
   drawArc(-15, lineMaterial);
   drawArc(15, lineMaterial);
@@ -113,7 +133,7 @@ function createCourtLines() {
 
 
 function createFreeThrowLines() {
-  const y = 0.11;          // same height as your other court lines
+  const y = 0.12;          // Slightly above the floor
   const lineMat = new THREE.LineBasicMaterial({
     color:       0xffffff,
     depthTest:   false,    // draw on top of the key mesh
@@ -125,26 +145,24 @@ function createFreeThrowLines() {
   [ -1, 1 ].forEach(side => {
     const x0 = side * (15 - 5);   // same x as your key's "top of the key"
 
-    // straight segment
-    const segPts = [
-      new THREE.Vector3(x0, y, -halfLineWidth),
-      new THREE.Vector3(x0, y,  halfLineWidth)
-    ];
-    const seg = new THREE.Line(new THREE.BufferGeometry().setFromPoints(segPts), lineMat);
-    seg.renderOrder = 10;
-    scene.add(seg);
-
     // semicircle arc facing center
-    const arcPts = [];
+    const arcLineMat = new THREE.LineBasicMaterial({
+      color: 0xffffff,
+      depthTest: true
+    });
+    const arcLinePts = [];
     for (let i = 0; i <= segments; i++) {
       const t = (i / segments) * Math.PI;
       const dx = arcRadius * Math.sin(t) * (side < 0 ? +1 : -1);
       const dz = arcRadius * Math.cos(t);
-      arcPts.push(new THREE.Vector3(x0 + dx, y, dz));
+      arcLinePts.push(new THREE.Vector3(x0 + dx, y, dz));
     }
-    const arc = new THREE.Line(new THREE.BufferGeometry().setFromPoints(arcPts), lineMat);
-    arc.renderOrder = 10;
-    scene.add(arc);
+    const arcLine = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(arcLinePts),
+      arcLineMat
+    );
+    arcLine.renderOrder = 1;
+    scene.add(arcLine);
   });
 }
 
@@ -156,9 +174,11 @@ function drawArc(xCenter, material) {
     const theta = (i / 64) * Math.PI;
     const x = xCenter + (xCenter < 0 ? 1 : -1) * threePointRadius * Math.sin(theta);
     const z = threePointRadius * Math.cos(theta);
-    pts.push(new THREE.Vector3(x, 0.11, z));
+    pts.push(new THREE.Vector3(x, 0.12, z)); // Slightly above the floor
   }
-  scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), material));
+  const arcLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), material);
+  arcLine.renderOrder = 1;
+  scene.add(arcLine);
 }
 
 function createKeyArea() {
@@ -186,40 +206,46 @@ function createKeyArea() {
 
     // --- 2) white outline rectangle ---
     const outlinePts = [
-      new THREE.Vector3(innerX, 0.11, -laneWidth/2),
-      new THREE.Vector3(outerX, 0.11, -laneWidth/2),
-      new THREE.Vector3(outerX, 0.11,  laneWidth/2),
-      new THREE.Vector3(innerX, 0.11,  laneWidth/2),
-      new THREE.Vector3(innerX, 0.11, -laneWidth/2)
+      new THREE.Vector3(innerX, 0.12, -laneWidth/2),
+      new THREE.Vector3(outerX, 0.12, -laneWidth/2),
+      new THREE.Vector3(outerX, 0.12,  laneWidth/2),
+      new THREE.Vector3(innerX, 0.12,  laneWidth/2),
+      new THREE.Vector3(innerX, 0.12, -laneWidth/2)
     ];
     const outline = new THREE.Line(
       new THREE.BufferGeometry().setFromPoints(outlinePts),
       lineMat
     );
+    outline.renderOrder = 1;
     scene.add(outline);
 
-    // --- 3) white free-throw semicircle ---
-    const shape    = new THREE.Shape();
-    const segments = 32;
+    // Draw the free-throw arc as a simple line (not mesh)
+    const arcLineMat = new THREE.LineBasicMaterial({
+      color: 0xffffff,
+      depthTest: true
+    });
+    const arcLinePts = [];
+    const segments = 64;
     for (let i = 0; i <= segments; i++) {
       const t = (i / segments) * Math.PI;
       const x = innerX - side * (circleRadius * Math.sin(t));
       const z = circleRadius * Math.cos(t);
-      i === 0 ? shape.moveTo(x, z) : shape.lineTo(x, z);
+      arcLinePts.push(new THREE.Vector3(x, 0.12, z));
     }
-    shape.lineTo(innerX, 0);
-
-    const arcMesh = new THREE.Mesh(
-      new THREE.ShapeGeometry(shape),
-      new THREE.MeshBasicMaterial({
-        color:       0xffffff,
-        transparent: true,
-        opacity:     0.6,
-        side:        THREE.DoubleSide
-      })
+    const arcLine = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(arcLinePts),
+      arcLineMat
     );
-    arcMesh.rotation.x = -Math.PI / 2;
-    scene.add(arcMesh);
+    arcLine.renderOrder = 1;
+    scene.add(arcLine);
+
+    // Hide arc outline if camera is below the floor
+    function updateArcOutlineVisibility() {
+      arcLine.visible = camera.position.y >= 0;
+    }
+    // Attach to animation loop
+    if (!window._arcOutlineVisibilityHooks) window._arcOutlineVisibilityHooks = [];
+    window._arcOutlineVisibilityHooks.push(updateArcOutlineVisibility);
   }
 }
 
@@ -393,15 +419,6 @@ function createHoop(xPosition) {
   pole.castShadow = true;
   scene.add(pole);
 
-  // === Base/Floor Beneath Pole ===
-  const baseGeo = new THREE.BoxGeometry(1.2, 0.2, 1.2);
-  const baseMat = new THREE.MeshPhongMaterial({ color: 0x666666 });
-  const base = new THREE.Mesh(baseGeo, baseMat);
-  base.position.set(actualPoleX, 0.1, 0);
-  base.castShadow = true;
-  base.receiveShadow = true;
-  scene.add(base);
-
   // === Diagonal Arm Between Pole and Backboard ===
   const armLength   = Math.abs(actualPoleX - actualBoardX);
   const armGeo      = new THREE.BoxGeometry(armLength, 0.05, 0.05);
@@ -413,55 +430,34 @@ function createHoop(xPosition) {
   scene.add(arm);
 }
 
+// --- Basketball State Variables ---
+let basketball = null; // Will hold the basketball mesh
+let ballPosition = { x: 0, y: 0.61, z: 0 }; // y = radius + floor height
+let ballVelocity = { x: 0, y: 0, z: 0 };
+let isBallMoving = false; // For future physics
+let shotPower = 0.5; // 0.0 to 1.0
+const BALL_RADIUS = 0.5;
+const COURT_BOUNDS = { x: 15, z: 7.5 };
+const SHOT_POWER_STEP = 0.01;
+const GRAVITY = -0.035; // stronger gravity
+const BOUNCE_ENERGY_LOSS = 0.8; // less energy lost per bounce
+const BALL_STOP_VELOCITY = 0.05; // below this, stop the ball
+const BALL_STOP_HEIGHT = BALL_RADIUS + 0.11;
 
+// --- Create Basketball (refactored) ---
 function createBasketball() {
-  const ballRadius = 0.5;
-
-  // 1) Load only the diffuse leather texture
   const ballTexture = loader.load('src/textures/basketball.png');
   ballTexture.wrapS = ballTexture.wrapT = THREE.ClampToEdgeWrapping;
   ballTexture.repeat.set(1, 1);
-  // ensure correct color space
   ballTexture.encoding = THREE.sRGBEncoding;
-
-  // 2) Simple Phong material with that texture only
-  const ballMaterial = new THREE.MeshPhongMaterial({
-    map:        ballTexture,
-    shininess:  50
-  });
-
-  // 3) Create and add the basketball mesh
-  const ballGeometry = new THREE.SphereGeometry(ballRadius, 64, 64);
-  const basketball   = new THREE.Mesh(ballGeometry, ballMaterial);
-  basketball.position.set(0, ballRadius + 0.11, 0);
-  basketball.castShadow    = true;
+  const ballMaterial = new THREE.MeshPhongMaterial({ map: ballTexture, shininess: 50 });
+  const ballGeometry = new THREE.SphereGeometry(BALL_RADIUS, 64, 64);
+  basketball = new THREE.Mesh(ballGeometry, ballMaterial);
+  basketball.position.set(ballPosition.x, ballPosition.y, ballPosition.z);
+  basketball.castShadow = true;
   basketball.receiveShadow = true;
   scene.add(basketball);
-
-  // 4) Draw the black seams using TubeGeometry
-  const seamMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
-  const segs    = 64;
-  const offset  = ballRadius + 0.002;
-
-  function makeSeamCircle(plane) {
-    const pts = [];
-    for (let i = 0; i <= segs; i++) {
-      const t = (i / segs) * Math.PI * 2;
-      let x = 0, y = 0, z = 0;
-      if (plane === 'XZ') {
-        x = offset * Math.cos(t);
-        z = offset * Math.sin(t);
-      } else { // 'YZ'
-        y = offset * Math.cos(t);
-        z = offset * Math.sin(t);
-      }
-      pts.push(new THREE.Vector3(x, y, z));
-    }
-    const curve   = new THREE.CatmullRomCurve3(pts, true);
-    const tubeGeo = new THREE.TubeGeometry(curve, 128, 0.008, 12, true);
-    return new THREE.Mesh(tubeGeo, seamMat);
-  }
-
+  // ... (seams code unchanged) ...
   // equator seam
   basketball.add(makeSeamCircle('XZ'));
   // two meridian seams
@@ -478,6 +474,25 @@ function createBasketball() {
   const s2 = makeSeamCircle('XZ');
   s2.rotation.x = -Math.PI / 4;
   basketball.add(s2);
+}
+
+function makeSeamCircle(plane) {
+  const pts = [];
+  for (let i = 0; i <= 64; i++) {
+    const t = (i / 64) * Math.PI * 2;
+    let x = 0, y = 0, z = 0;
+    if (plane === 'XZ') {
+      x = BALL_RADIUS * Math.cos(t);
+      z = BALL_RADIUS * Math.sin(t);
+    } else { // 'YZ'
+      y = BALL_RADIUS * Math.cos(t);
+      z = BALL_RADIUS * Math.sin(t);
+    }
+    pts.push(new THREE.Vector3(x, y, z));
+  }
+  const curve   = new THREE.CatmullRomCurve3(pts, true);
+  const tubeGeo = new THREE.TubeGeometry(curve, 128, 0.008, 12, true);
+  return new THREE.Mesh(tubeGeo, new THREE.MeshBasicMaterial({ color: 0x000000 }));
 }
 
 function createBleachersAt(position, rotationY = 0) {
@@ -787,11 +802,212 @@ function handleKeyDown(e) {
 }
 document.addEventListener('keydown', handleKeyDown);
 
+// --- Basketball Movement Controls ---
+const keysPressed = {};
+document.addEventListener('keydown', (e) => {
+  keysPressed[e.key.toLowerCase()] = true;
+  // Shot power (W/S)
+  if (e.key.toLowerCase() === 'w') {
+    shotPower = Math.min(1.0, shotPower + SHOT_POWER_STEP);
+    updateShotPowerIndicator();
+  }
+  if (e.key.toLowerCase() === 's') {
+    shotPower = Math.max(0.01, shotPower - SHOT_POWER_STEP);
+    updateShotPowerIndicator();
+  }
+  // Reset (R)
+  if (e.key.toLowerCase() === 'r') {
+    resetBasketballPosition();
+  }
+  // Shoot (Spacebar)
+  if (e.code === 'Space' && !isBallMoving) {
+    shootBasketball();
+  }
+});
+document.addEventListener('keyup', (e) => {
+  keysPressed[e.key.toLowerCase()] = false;
+});
+
+function resetBasketballPosition() {
+  ballPosition.x = 0;
+  ballPosition.z = 0;
+  ballPosition.y = BALL_RADIUS + 0.11;
+  ballVelocity.x = 0;
+  ballVelocity.y = 0;
+  ballVelocity.z = 0;
+  isBallMoving = false;
+  shotPower = 0.5;
+  updateShotPowerIndicator();
+  if (basketball) {
+    basketball.position.set(ballPosition.x, ballPosition.y, ballPosition.z);
+  }
+}
+
+function updateBasketballPhysics() {
+  if (isBallMoving && basketball) {
+    // Apply gravity
+    ballVelocity.y += GRAVITY;
+    // Store previous position for tunneling check
+    const prevPos = { x: ballPosition.x, y: ballPosition.y, z: ballPosition.z };
+    // Update position
+    ballPosition.x += ballVelocity.x;
+    ballPosition.y += ballVelocity.y;
+    ballPosition.z += ballVelocity.z;
+
+    // --- Rim/Hoop Collision (improved, both sides) ---
+    [LEFT_RIM, RIGHT_RIM].forEach(rim => {
+      const dx = ballPosition.x - rim.x;
+      const dz = ballPosition.z - rim.z;
+      const distXZ = Math.sqrt(dx * dx + dz * dz);
+      // Rim is a torus: check if ball overlaps the rim ring (outer radius)
+      const rimOuter = RIM_RADIUS + BALL_RADIUS * 0.85;
+      const rimInner = RIM_RADIUS - BALL_RADIUS * 0.7;
+      // Only check if ball is near rim height
+      if (
+        Math.abs(ballPosition.y - rim.y) < BALL_RADIUS * 1.2 &&
+        distXZ < rimOuter &&
+        distXZ > rimInner
+      ) {
+        // Reflect horizontal velocity
+        const normX = dx / (distXZ || 1);
+        const normZ = dz / (distXZ || 1);
+        const dot = ballVelocity.x * normX + ballVelocity.z * normZ;
+        ballVelocity.x -= 2 * dot * normX;
+        ballVelocity.z -= 2 * dot * normZ;
+        // Lose some energy
+        ballVelocity.x *= 0.7;
+        ballVelocity.z *= 0.7;
+        // Nudge ball out of rim
+        ballPosition.x = rim.x + normX * (rimOuter + 0.01);
+        ballPosition.z = rim.z + normZ * (rimOuter + 0.01);
+      }
+    });
+
+    // --- Backboard Collision (both sides) ---
+    // Backboard planes: x = -15 (left), x = 15 (right), y: 2.2 to 4.6, z: -1.75 to 1.75
+    // Ball radius fudge for collision
+    const BB_Y_MIN = 2.2, BB_Y_MAX = 4.6, BB_Z_MIN = -1.75, BB_Z_MAX = 1.75;
+    // Left backboard
+    if (
+      ballPosition.x - BALL_RADIUS < -15 &&
+      ballPosition.y > BB_Y_MIN && ballPosition.y < BB_Y_MAX &&
+      ballPosition.z > BB_Z_MIN && ballPosition.z < BB_Z_MAX
+    ) {
+      ballPosition.x = -15 + BALL_RADIUS + 0.01;
+      ballVelocity.x = Math.abs(ballVelocity.x) * 0.7; // bounce right
+    }
+    // Right backboard
+    if (
+      ballPosition.x + BALL_RADIUS > 15 &&
+      ballPosition.y > BB_Y_MIN && ballPosition.y < BB_Y_MAX &&
+      ballPosition.z > BB_Z_MIN && ballPosition.z < BB_Z_MAX
+    ) {
+      ballPosition.x = 15 - BALL_RADIUS - 0.01;
+      ballVelocity.x = -Math.abs(ballVelocity.x) * 0.7; // bounce left
+    }
+
+    // --- Scoring Detection (passes through hoop) ---
+    // If ball is moving downward, within rim radius, and just below rim height
+    [LEFT_RIM, RIGHT_RIM].forEach(rim => {
+      const dx = ballPosition.x - rim.x;
+      const dz = ballPosition.z - rim.z;
+      const distXZ = Math.sqrt(dx * dx + dz * dz);
+      if (
+        ballVelocity.y < 0 &&
+        Math.abs(ballPosition.y - rim.y) < 0.18 &&
+        distXZ < RIM_RADIUS * 0.7 &&
+        ballPosition.y < rim.y
+      ) {
+        lastShotScored = true;
+        // Placeholder: visual feedback (to be implemented)
+        // e.g., showScoreFeedback('SHOT MADE!');
+      }
+    });
+
+    // Ground collision
+    if (ballPosition.y <= BALL_STOP_HEIGHT) {
+      ballPosition.y = BALL_STOP_HEIGHT;
+      if (Math.abs(ballVelocity.y) > BALL_STOP_VELOCITY) {
+        ballVelocity.y = -ballVelocity.y * BOUNCE_ENERGY_LOSS;
+        // Lose energy on bounce
+        ballVelocity.x *= BOUNCE_ENERGY_LOSS;
+        ballVelocity.z *= BOUNCE_ENERGY_LOSS;
+      } else {
+        // Stop the ball
+        ballVelocity.x = 0;
+        ballVelocity.y = 0;
+        ballVelocity.z = 0;
+        isBallMoving = false;
+      }
+    }
+    // Court boundaries (simple clamp)
+    ballPosition.x = Math.max(-COURT_BOUNDS.x, Math.min(COURT_BOUNDS.x, ballPosition.x));
+    ballPosition.z = Math.max(-COURT_BOUNDS.z, Math.min(COURT_BOUNDS.z, ballPosition.z));
+    // Update mesh
+    basketball.position.set(ballPosition.x, ballPosition.y, ballPosition.z);
+  }
+}
+
+function updateBasketballPosition() {
+  // Only allow movement if not in flight (no physics yet)
+  if (!isBallMoving && basketball) {
+    let moved = false;
+    // Arrow keys: left/right/forward/back
+    if (keysPressed['arrowleft']) {
+      ballPosition.x = Math.max(-COURT_BOUNDS.x, ballPosition.x - 0.2);
+      moved = true;
+    }
+    if (keysPressed['arrowright']) {
+      ballPosition.x = Math.min(COURT_BOUNDS.x, ballPosition.x + 0.2);
+      moved = true;
+    }
+    if (keysPressed['arrowup']) {
+      ballPosition.z = Math.max(-COURT_BOUNDS.z, ballPosition.z - 0.2);
+      moved = true;
+    }
+    if (keysPressed['arrowdown']) {
+      ballPosition.z = Math.min(COURT_BOUNDS.z, ballPosition.z + 0.2);
+      moved = true;
+    }
+    if (moved) {
+      basketball.position.set(ballPosition.x, ballPosition.y, ballPosition.z);
+    }
+  }
+}
+
+// --- Shot Power Indicator UI ---
+const shotPowerDiv = document.createElement('div');
+shotPowerDiv.style.position = 'absolute';
+shotPowerDiv.style.bottom = '30px';
+shotPowerDiv.style.right = '30px';
+shotPowerDiv.style.background = 'rgba(0,0,0,0.7)';
+shotPowerDiv.style.color = '#fff';
+shotPowerDiv.style.padding = '10px 20px';
+shotPowerDiv.style.borderRadius = '8px';
+shotPowerDiv.style.fontFamily = 'Arial, sans-serif';
+shotPowerDiv.style.fontSize = '18px';
+shotPowerDiv.style.zIndex = '1002';
+shotPowerDiv.innerHTML = 'Shot Power: 50%';
+document.body.appendChild(shotPowerDiv);
+
+function updateShotPowerIndicator() {
+  let percent = Math.round(shotPower * 100);
+  if (percent < 1) percent = 1;
+  if (percent > 100) percent = 100;
+  shotPowerDiv.innerHTML = `Shot Power: ${percent}%`;
+}
+
 // Animation loop
 function animate() {
   requestAnimationFrame(animate);
   controls.enabled = isOrbitEnabled;
   controls.update();
+  updateBasketballPosition(); // NEW: handle movement
+  updateBasketballPhysics(); // NEW: handle shooting physics
+  // Update arc outline visibility if hooks exist
+  if (window._arcOutlineVisibilityHooks) {
+    for (const fn of window._arcOutlineVisibilityHooks) fn();
+  }
   renderer.render(scene, camera);
 }
 animate();
@@ -810,3 +1026,56 @@ setInterval(() => {
     if (typeof updateScoreboardTimer === 'function') updateScoreboardTimer();
   }
 }, 1000);
+
+function getNearestHoopPosition() {
+  // Two hoops at x = -15 and x = 15, y = 3.05, z = 0
+  // Return the one closest to the ball
+  const leftHoop = { x: -15 + 0.55, y: 3.05, z: 0 }; // rim center (offset for rim)
+  const rightHoop = { x: 15 - 0.55, y: 3.05, z: 0 };
+  const distLeft = Math.abs(ballPosition.x - leftHoop.x);
+  const distRight = Math.abs(ballPosition.x - rightHoop.x);
+  return distLeft < distRight ? leftHoop : rightHoop;
+}
+
+// function shootBasketball() {
+//   const hoop = getNearestHoopPosition();
+//   // Direction vector from ball to hoop
+//   const dx = hoop.x - ballPosition.x;
+//   const dz = hoop.z - ballPosition.z;
+//   const dy = hoop.y - ballPosition.y;
+//   // Horizontal distance
+//   const dist = Math.sqrt(dx * dx + dz * dz);
+//   // Angle: give a much higher arc
+//   const angle = Math.atan2(dy + 6.0, dist); // much higher arc
+//   // Power scaling (stronger)
+//   const power = 0.022 + 0.07 * shotPower;
+//   // Initial velocity components
+//   const v = power * (dist + 8);
+//   ballVelocity.x = (dx / dist) * v * Math.cos(angle);
+//   ballVelocity.z = (dz / dist) * v * Math.cos(angle);
+//   ballVelocity.y = v * Math.sin(angle);
+//   isBallMoving = true;
+// }
+
+function shootBasketball() {
+  const hoop = getNearestHoopPosition();
+  const dx = hoop.x - ballPosition.x;
+  const dz = hoop.z - ballPosition.z;
+  const dy = hoop.y - ballPosition.y;
+
+  // Choose an apex height a few units above the rim
+  const apexY = hoop.y + 5; 
+  // Time to climb from current y to apex
+  const tUp   = Math.sqrt( 2 * (apexY - ballPosition.y) / -GRAVITY );
+  // Initial vertical velocity (upwards)
+  ballVelocity.y = -GRAVITY * tUp;
+  // Time from apex down to hoop height
+  const tDown = Math.sqrt( 2 * (apexY - hoop.y)     / -GRAVITY );
+  const totalTime = tUp + tDown;
+
+  // Uniform horizontal velocity to cover dx, dz in totalTime
+  ballVelocity.x = dx / totalTime;
+  ballVelocity.z = dz / totalTime;
+
+  isBallMoving = true;
+}
