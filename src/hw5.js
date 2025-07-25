@@ -432,6 +432,7 @@ function createHoop(xPosition) {
 
 // --- Basketball State Variables ---
 let basketball = null; // Will hold the basketball mesh
+let basketballGroup = null; // Will hold the group for ball + seams
 let ballPosition = { x: 0, y: 0.61, z: 0 }; // y = radius + floor height
 let ballVelocity = { x: 0, y: 0, z: 0 };
 let isBallMoving = false; // For future physics
@@ -443,6 +444,10 @@ const GRAVITY = -0.035; // stronger gravity
 const BOUNCE_ENERGY_LOSS = 0.8; // less energy lost per bounce
 const BALL_STOP_VELOCITY = 0.05; // below this, stop the ball
 const BALL_STOP_HEIGHT = BALL_RADIUS + 0.11;
+// --- Rotation Animation State ---
+let ballRotationAxis = new THREE.Vector3(1, 0, 0); // Default axis
+let ballRotationSpeed = 0; // radians per frame
+let prevBallPosition = { x: ballPosition.x, y: ballPosition.y, z: ballPosition.z };
 
 // --- Create Basketball (refactored) ---
 function createBasketball() {
@@ -453,27 +458,31 @@ function createBasketball() {
   const ballMaterial = new THREE.MeshPhongMaterial({ map: ballTexture, shininess: 50 });
   const ballGeometry = new THREE.SphereGeometry(BALL_RADIUS, 64, 64);
   basketball = new THREE.Mesh(ballGeometry, ballMaterial);
-  basketball.position.set(ballPosition.x, ballPosition.y, ballPosition.z);
   basketball.castShadow = true;
   basketball.receiveShadow = true;
-  scene.add(basketball);
-  // ... (seams code unchanged) ...
+  // Create group for ball and seams
+  basketballGroup = new THREE.Group();
+  basketballGroup.add(basketball);
   // equator seam
-  basketball.add(makeSeamCircle('XZ'));
+  basketballGroup.add(makeSeamCircle('XZ'));
   // two meridian seams
   const mer1 = makeSeamCircle('YZ');
   mer1.rotation.y = Math.PI / 2;
-  basketball.add(mer1);
+  basketballGroup.add(mer1);
   const mer2 = makeSeamCircle('YZ');
   mer2.rotation.y = -Math.PI / 2;
-  basketball.add(mer2);
+  basketballGroup.add(mer2);
   // two angled seams at ±45°
   const s1 = makeSeamCircle('XZ');
   s1.rotation.x = Math.PI / 4;
-  basketball.add(s1);
+  basketballGroup.add(s1);
   const s2 = makeSeamCircle('XZ');
   s2.rotation.x = -Math.PI / 4;
-  basketball.add(s2);
+  basketballGroup.add(s2);
+  basketballGroup.position.set(ballPosition.x, ballPosition.y, ballPosition.z);
+  basketballGroup.castShadow = true;
+  basketballGroup.receiveShadow = true;
+  scene.add(basketballGroup);
 }
 
 function makeSeamCircle(plane) {
@@ -838,13 +847,14 @@ function resetBasketballPosition() {
   isBallMoving = false;
   shotPower = 0.5;
   updateShotPowerIndicator();
-  if (basketball) {
-    basketball.position.set(ballPosition.x, ballPosition.y, ballPosition.z);
+  if (basketballGroup) {
+    basketballGroup.position.set(ballPosition.x, ballPosition.y, ballPosition.z);
+    basketballGroup.rotation.set(0, 0, 0);
   }
 }
 
 function updateBasketballPhysics() {
-  if (isBallMoving && basketball) {
+  if (isBallMoving && basketballGroup) {
     // Apply gravity
     ballVelocity.y += GRAVITY;
     // Store previous position for tunneling check
@@ -944,13 +954,13 @@ function updateBasketballPhysics() {
     ballPosition.x = Math.max(-COURT_BOUNDS.x, Math.min(COURT_BOUNDS.x, ballPosition.x));
     ballPosition.z = Math.max(-COURT_BOUNDS.z, Math.min(COURT_BOUNDS.z, ballPosition.z));
     // Update mesh
-    basketball.position.set(ballPosition.x, ballPosition.y, ballPosition.z);
+    basketballGroup.position.set(ballPosition.x, ballPosition.y, ballPosition.z);
   }
 }
 
 function updateBasketballPosition() {
   // Only allow movement if not in flight (no physics yet)
-  if (!isBallMoving && basketball) {
+  if (!isBallMoving && basketballGroup) {
     let moved = false;
     // Arrow keys: left/right/forward/back
     if (keysPressed['arrowleft']) {
@@ -966,11 +976,11 @@ function updateBasketballPosition() {
       moved = true;
     }
     if (keysPressed['arrowdown']) {
-      ballPosition.z = Math.min(COURT_BOUNDS.z, ballPosition.z + 0.2);
+      ballPosition.z = Math.min(-COURT_BOUNDS.z, ballPosition.z + 0.2);
       moved = true;
     }
     if (moved) {
-      basketball.position.set(ballPosition.x, ballPosition.y, ballPosition.z);
+      basketballGroup.position.set(ballPosition.x, ballPosition.y, ballPosition.z);
     }
   }
 }
@@ -997,6 +1007,46 @@ function updateShotPowerIndicator() {
   shotPowerDiv.innerHTML = `Shot Power: ${percent}%`;
 }
 
+// --- Ball Rotation Animation ---
+function updateBasketballRotation() {
+  if (!basketballGroup) return;
+  // Calculate velocity vector (use difference in position for smoothness)
+  const dx = ballPosition.x - prevBallPosition.x;
+  const dy = ballPosition.y - prevBallPosition.y;
+  const dz = ballPosition.z - prevBallPosition.z;
+  const velocity = new THREE.Vector3(dx, dy, dz);
+  const speed = velocity.length();
+  // Only rotate if ball is moving (in air or rolling)
+  if (isBallMoving && speed > 0.00001) {
+    // Axis is perpendicular to velocity and up (Y) direction
+    const up = new THREE.Vector3(0, 1, 0);
+    let axis = new THREE.Vector3().crossVectors(velocity, up);
+    if (axis.lengthSq() < 0.0001) axis.set(1, 0, 0); // fallback
+    axis.normalize();
+    // Smoothly interpolate axis for smooth transitions
+    ballRotationAxis.lerp(axis, 0.2);
+    // Rotation speed proportional to velocity (tune factor for realism)
+    const ROTATION_FACTOR = 6.0 / BALL_RADIUS; // much more visible spin
+    let targetSpeed = speed * ROTATION_FACTOR;
+    // Ensure a minimum visible spin when moving
+    if (targetSpeed < 0.03) targetSpeed = 0.03;
+    // Smoothly interpolate speed
+    ballRotationSpeed += (targetSpeed - ballRotationSpeed) * 0.2;
+    // Apply rotation
+    basketballGroup.rotateOnAxis(ballRotationAxis, ballRotationSpeed);
+  } else {
+    // Gradually slow down rotation when stopped
+    ballRotationSpeed *= 0.85;
+    if (ballRotationSpeed > 0.001) {
+      basketballGroup.rotateOnAxis(ballRotationAxis, ballRotationSpeed);
+    }
+  }
+  // Store current position for next frame
+  prevBallPosition.x = ballPosition.x;
+  prevBallPosition.y = ballPosition.y;
+  prevBallPosition.z = ballPosition.z;
+}
+
 // Animation loop
 function animate() {
   requestAnimationFrame(animate);
@@ -1004,6 +1054,7 @@ function animate() {
   controls.update();
   updateBasketballPosition(); // NEW: handle movement
   updateBasketballPhysics(); // NEW: handle shooting physics
+  updateBasketballRotation(); // NEW: handle ball rotation
   // Update arc outline visibility if hooks exist
   if (window._arcOutlineVisibilityHooks) {
     for (const fn of window._arcOutlineVisibilityHooks) fn();
@@ -1063,19 +1114,27 @@ function shootBasketball() {
   const dz = hoop.z - ballPosition.z;
   const dy = hoop.y - ballPosition.y;
 
-  // Choose an apex height a few units above the rim
-  const apexY = hoop.y + 5; 
+  // Map shotPower (0.01 to 1.0) to apex and time scale
+  const minApex = hoop.y + 2.5;
+  const maxApex = hoop.y + 8;
+  const apexY = minApex + (maxApex - minApex) * shotPower;
+
+  // Time scaling: weak shots take longer, strong shots are faster
+  const minTimeScale = 1.2; // slowest
+  const maxTimeScale = 0.4; // fastest
+  const timeScale = minTimeScale + (maxTimeScale - minTimeScale) * shotPower;
+
   // Time to climb from current y to apex
   const tUp   = Math.sqrt( 2 * (apexY - ballPosition.y) / -GRAVITY );
-  // Initial vertical velocity (upwards)
-  ballVelocity.y = -GRAVITY * tUp;
   // Time from apex down to hoop height
   const tDown = Math.sqrt( 2 * (apexY - hoop.y)     / -GRAVITY );
-  const totalTime = tUp + tDown;
+  const totalTime = (tUp + tDown) * timeScale;
 
   // Uniform horizontal velocity to cover dx, dz in totalTime
   ballVelocity.x = dx / totalTime;
   ballVelocity.z = dz / totalTime;
+  // Initial vertical velocity (upwards)
+  ballVelocity.y = -GRAVITY * tUp;
 
   isBallMoving = true;
 }
