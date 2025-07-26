@@ -1,11 +1,18 @@
-# Basketball Court 3D – THREE.js
+# Interactive Basketball Shooting Game with Physics – THREE.js (HW06)
 
 ## Group Members
 - Eden Zehavy 314832270
 - Rotem Haim 314652496
 
 ## Overview
-This project is an interactive 3D basketball court built with [THREE.js](https://threejs.org/). It features a detailed court, hoops, bleachers, lighting, and interactive camera controls. The scene is fully responsive and visually realistic, with shadows, textures, and user-friendly controls.
+This project extends our HW05 basketball court into a fully interactive 3D basketball shooting game using [THREE.js](https://threejs.org/). It features:
+- Realistic basketball physics (gravity, arc, bounce, rim/backboard collision)
+- Interactive controls for moving, shooting, and adjusting shot power
+- Ball rotation animation during movement and flight
+- Real-time scoring and statistics
+- Live UI: score, attempts, accuracy, timer, shot power, and feedback
+- 3D scoreboard, sound effects, and visual feedback
+- Bleachers, court lines, and a detailed environment
 
 ## How to Run
 1. **Install dependencies** (if any):
@@ -18,49 +25,67 @@ This project is an interactive 3D basketball court built with [THREE.js](https:/
 3. **Open your browser:**
    - Go to [http://localhost:8000](http://localhost:8000)
 
-## Features & Requirements Checklist
-### Mandatory Infrastructure (HW05)
-- [x] Properly sized basketball court (rectangular, ~2:1 ratio, wood color)
-- [x] Court markings: center circle, three-point lines (curved), center line, clear white lines
-- [x] Two basketball hoops:
-  - [x] Backboard (white, partially transparent)
-  - [x] Orange rim at regulation height
-  - [x] Net with line segments (at least 8)
-  - [x] Support structure (pole and arms) behind backboard
-  - [x] Hoops face center court
-- [x] Static basketball:
-  - [x] Orange with black seams
-  - [x] Proper size, geometry, and material
-  - [x] Positioned at center court
-- [x] Camera and lighting:
-  - [x] Appropriate lighting with shadows
-  - [x] Interactive orbit camera controls (toggle with 'O')
-  - [x] Preset camera positions (A, B, C, D)
-  - [x] Responsive to window resizing
-- [x] UI framework:
-  - [x] HTML containers for future score and controls display
-  - [x] Basic CSS styling for UI elements
-  - [x] UI elements positioned appropriately
-- [x] Code style: ES modules, camelCase, comments, organized structure
-
-### Bonus Features (Optional, implemented)
-- [x] Stadium environment (bleachers on all sides)
-- [x] Scoreboard with static timer - will be non-static in HW6
-- [x] Enhanced lighting (multiple spotlights, stadium light)
-- [x] Multiple camera preset positions with popup indicator
-- [x] Textured surfaces for court and basketball
-
-### Not Included (for HW06)
-- Interactive basketball controls (Arrow Keys, W/S, Spacebar, R)
-- Physics-based movement, shooting, scoring
-
 ## Controls
-- **O**: Toggle orbit camera controls ("Camera Locked" message appears when locked)
-- **A**: Initial view (in front of the signature)
-- **B**: Behind the right hoop
-- **C**: Behind the left hoop
-- **D**: Top-down (bird's eye) view
-- After pressing A/B/C/D, a popup will indicate the camera mode
+| Key         | Function                                 |
+|-------------|------------------------------------------|
+| Arrow Keys  | Move basketball (left/right/forward/back)|
+| W / S       | Increase/decrease shot power             |
+| Spacebar    | Shoot basketball toward nearest hoop     |
+| R           | Reset basketball to center court         |
+| O           | Toggle orbit camera controls             |
+| A/B/C/D     | Camera presets (various views)           |
+| Mouse       | Orbit, pan, and zoom camera (when enabled)|
+
+- After pressing A/B/C/D, a popup will indicate the camera mode.
+- All controls are responsive and work as specified in the UI panel.
+
+## Features & Requirements Checklist (HW06)
+### Mandatory Interactive Features
+- [x] **Physics-Based Basketball Movement:**
+  - Gravity, parabolic arc, bounce with energy loss
+  - Ground and rim collision detection
+- [x] **Interactive Basketball Controls:**
+  - Arrow keys: move ball
+  - W/S: adjust shot power (0–100%, with visual indicator)
+  - Spacebar: shoot
+  - R: reset ball to center
+- [x] **Basketball Rotation Animations:**
+  - Ball rotates during movement/flight, axis matches direction, speed matches velocity
+- [x] **Comprehensive Scoring System:**
+  - Real-time score, shot attempts, made shots, accuracy percentage
+  - Visual and audio feedback for made/missed shots
+- [x] **Enhanced User Interface:**
+  - Live display: score, attempts, accuracy, timer, shot power
+  - Control instructions panel
+  - Game status messages (shot made/missed)
+
+### Physics System Details
+- Constant gravity pulls the ball down
+- Parabolic trajectory for shots
+- Shot power and angle determine initial velocity
+- Ball bounces with energy loss (comes to rest quickly)
+- Rim and backboard collisions are robust and realistic
+- Ball rotation axis and speed match movement direction
+
+### Scoring System
+- Score 2 points for each successful shot (local/visitor logic)
+- Shot attempts and made shots tracked
+- Shooting percentage calculated and displayed
+- Visual and audio feedback for made/missed shots
+
+### User Interface
+- **Top-left:** Score, attempts, made, accuracy, timer
+- **Bottom-left:** Shot power indicator, control instructions
+- **Center:** Feedback for made/missed shots
+- **3D scoreboard:** Above court (score and timer)
+
+### Bonus Features (if implemented)
+- Stadium environment (bleachers)
+- Enhanced lighting (multiple spotlights)
+- **Ball Trail Effect:** Visual trail following the basketball during flight (**implemented**)
+- **Sound Effects:** Audio feedback for shots, bounces, and scores (**implemented**)
+- **Time Challenge:** Timed shooting challenges with countdown (**implemented**)
+- (See HW06 instructions for more bonus ideas)
 
 ## Project Structure
 - `index.js` – Entry point/server
@@ -68,27 +93,46 @@ This project is an interactive 3D basketball court built with [THREE.js](https:/
 - `src/hw5.js` – Main scene and logic (all 3D, controls, and rendering)
 - `src/OrbitControls.js` – Camera orbit controls
 - `src/textures/` – Textures for court and basketball
+- `src/sounds/` – Sound effects for gameplay
 - `CONFIGURATION.md` – Project and code style guidelines
 
 ## Sources of External Assets
 - [THREE.js](https://threejs.org/) (core library)
 - [Basketball texture](src/textures/basketball.png)
 - [Wood floor texture](src/textures/wood_floor.jpg)
-- Fonts loaded from [threejs.org](https://threejs.org/examples/fonts/)
+- [Fonts](https://threejs.org/examples/fonts/)
+- [Sound effects] (see src/sounds/ for sources)
 
 ## Screenshots (MANDATORY)
+Include screenshots demonstrating:
+- Basketball movement (arrow keys)
+- Shot power adjustment (W/S keys)
+- Shooting mechanics (spacebar)
+- Successful shot with score update
+- Ball rotation animation during movement/flight
+- Complete UI showing scores, statistics, and controls
 
-### Overall view of the basketball court with hoops
-![Overall view](screenshots/image1.png)
+Example:
 
-### Close-up view of basketball hoops with nets
-![Hoop closeup](screenshots/image2.png)
+### Basketball Movement (Arrow Keys)
+![Basketball Movement](screenshots/image1.png)
 
-### Basketball positioned at center court
-![Center ball](screenshots/image3.png)
+### Shot Power Adjustment (W/S Keys)
+![Shot Power](screenshots/image2.png)
 
-### Camera controls functionality
-![Camera controls](screenshots/image4.png)
+### Shooting Mechanics (Spacebar)
+![Shooting](screenshots/image3.png)
+
+### Score Update & UI
+![Score Update](screenshots/image4.png)
+
+## Known Issues / Limitations
+- (List any known bugs or limitations here)
+
+## Additional Features (if implemented)
+- **Ball Trail Effect:** Visual trail following the basketball during flight (**implemented**)
+- **Sound Effects:** Audio feedback for shots, bounces, and scores (**implemented**)
+- **Time Challenge:** Timed shooting challenges with countdown (**implemented**)
 
 ## Submission Notes
 - Submit via a public GitHub repository (recommended) or as a zip file
@@ -99,6 +143,8 @@ This project is an interactive 3D basketball court built with [THREE.js](https:/
 - [THREE.js Documentation](https://threejs.org/docs/)
 - [Three.js Examples](https://threejs.org/examples/)
 - [Discover Three.js](https://discoverthreejs.com/)
+- [Keyboard Event Handling (MDN)](https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent)
+- [Physics: Projectile Motion (Khan Academy)](https://www.khanacademy.org/science/physics/two-dimensional-motion/projectile-motion/a/what-is-projectile-motion)
 - Standard basketball court: 28m x 15m (92ft x 50ft)
 - Standard rim height: 3.05m (10ft)
 
