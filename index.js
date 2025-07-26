@@ -11,7 +11,10 @@ const __dirname = path.dirname(__filename);
 const app = express()
 const port = 8000
 
-app.use("/src", express.static(__dirname + "/src"));
+// Serve static files from the project root (for index.html, etc.)
+app.use(express.static(__dirname));
+// Serve static files from /src (for sounds, textures, etc.)
+app.use('/src', express.static(path.join(__dirname, 'src')));
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '/index.html'));

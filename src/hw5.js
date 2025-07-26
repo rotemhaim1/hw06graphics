@@ -437,11 +437,11 @@ let ballPosition = { x: 0, y: 0.61, z: 0 }; // y = radius + floor height
 let ballVelocity = { x: 0, y: 0, z: 0 };
 let isBallMoving = false; // For future physics
 let shotPower = 0.5; // 0.0 to 1.0
-const BALL_RADIUS = 0.5;
+const BALL_RADIUS = 0.4;
 const COURT_BOUNDS = { x: 15, z: 7.5 };
 const SHOT_POWER_STEP = 0.01;
 const GRAVITY = -0.06; // was -0.035
-const BOUNCE_ENERGY_LOSS = 0.88; // was 0.8
+const BOUNCE_ENERGY_LOSS = 0.7; // loses more energy on each bounce
 const BALL_STOP_VELOCITY = 0.05; // below this, stop the ball
 const BALL_STOP_HEIGHT = BALL_RADIUS + 0.11;
 // --- Rotation Animation State ---
@@ -449,7 +449,8 @@ let ballRotationAxis = new THREE.Vector3(1, 0, 0); // Default axis
 let ballRotationSpeed = 0; // radians per frame
 let prevBallPosition = { x: ballPosition.x, y: ballPosition.y, z: ballPosition.z };
 // --- Scoring State ---
-let score = 0;
+let localScore = 0;
+let visitorScore = 0;
 let shotInProgress = false;
 let scoredThisShot = false;
 let prevBallY = ballPosition.y;
@@ -500,11 +501,65 @@ document.body.appendChild(shotMsgDiv);
 function updateScoreboardUI() {
   const pct = shotAttempts > 0 ? ((shotsMade / shotAttempts) * 100).toFixed(1) : '0.0';
   scoreboardDiv.innerHTML = `
-    <b>Total Score:</b> ${score}<br>
+    <b>Score:</b> Local ${localScore} - Visitor ${visitorScore}<br>
     <b>Shot Attempts:</b> ${shotAttempts}<br>
     <b>Shots Made:</b> ${shotsMade}<br>
-    <b>Shooting %:</b> ${pct}%
+    <b>Shooting %:</b> ${pct}%<br>
+    <b>Time:</b> ${formatTime(remainingSeconds)}
   `;
+  updatePhysicalScoreboard();
+}
+
+// Helper to format time as MM:SS
+function formatTime(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+// --- 3D Scoreboard Mesh References ---
+let localMesh = null;
+let visitorMesh = null;
+let timerMesh3D = null;
+let scoreboardFont = null;
+let scoreboardTextMat = null;
+
+function updatePhysicalScoreboard() {
+  if (!scoreboardFont || !scoreboardTextMat) return;
+  // Remove old meshes if present
+  if (localMesh && localMesh.parent) localMesh.parent.remove(localMesh);
+  if (visitorMesh && visitorMesh.parent) visitorMesh.parent.remove(visitorMesh);
+  if (timerMesh3D && timerMesh3D.parent) timerMesh3D.parent.remove(timerMesh3D);
+  // Create new meshes
+  const textOpts = {
+    font: scoreboardFont,
+    size: 0.6,
+    height: 0.05,
+    curveSegments: 8,
+    bevelEnabled: false
+  };
+  localMesh = new THREE.Mesh(
+    new THREE.TextGeometry(`LOCAL ${localScore}`, textOpts),
+    scoreboardTextMat
+  );
+  localMesh.position.set(-5.5, 0.8, 0.22);
+  visitorMesh = new THREE.Mesh(
+    new THREE.TextGeometry(`VISITOR ${visitorScore}`, textOpts),
+    scoreboardTextMat
+  );
+  visitorMesh.position.set(1.5, 0.8, 0.22);
+  // Timer
+  const timerGeo = new THREE.TextGeometry(`GAME TIME ${formatTime(remainingSeconds)}`, textOpts);
+  timerGeo.computeBoundingBox();
+  const w = timerGeo.boundingBox
+    ? timerGeo.boundingBox.max.x - timerGeo.boundingBox.min.x
+    : 0;
+  timerMesh3D = new THREE.Mesh(timerGeo, scoreboardTextMat);
+  timerMesh3D.position.set(-w / 2, -1.2, 0.22); // Centered
+  // Add to board group
+  if (window._scoreboardBoardGroup) {
+    window._scoreboardBoardGroup.add(localMesh, visitorMesh, timerMesh3D);
+  }
 }
 
 function showShotMessage(msg, success) {
@@ -734,36 +789,10 @@ function createScoreboard() {
       const textMat = new THREE.MeshBasicMaterial({
         color: fenceBlue
       });
-
-      // LOCAL score
-      const localGeo = new THREE.TextGeometry('LOCAL 0', textOpts);
-      localGeo.computeBoundingBox();
-      const localMesh = new THREE.Mesh(localGeo, textMat);
-      // shift to fit larger screen
-      localMesh.position.set(-5.5, 0.8, 0.22);
-      boardGroup.add(localMesh);
-
-      // VISITOR score
-      const visitorGeo = new THREE.TextGeometry('VISITOR 0', textOpts);
-      visitorGeo.computeBoundingBox();
-      const visitorMesh = new THREE.Mesh(visitorGeo, textMat);
-      visitorMesh.position.set( 1.5, 0.8, 0.22);
-      boardGroup.add(visitorMesh);
-
-      // GAME TIME label
-      const makeTimerMesh = () => {
-        const geo = new THREE.TextGeometry('GAME TIME 10:00', textOpts);
-        geo.computeBoundingBox();
-        const mesh = new THREE.Mesh(geo, textMat);
-        // center under the scores
-        const w = geo.boundingBox.max.x - geo.boundingBox.min.x;
-        mesh.position.set(-w / 2, -1.2, 0.22);
-        return mesh;
-      };
-
-      // static timer
-      timerMesh = makeTimerMesh();
-      boardGroup.add(timerMesh);
+      scoreboardFont = font;
+      scoreboardTextMat = textMat;
+      window._scoreboardBoardGroup = boardGroup;
+      updatePhysicalScoreboard();
     }
   );
 
@@ -848,6 +877,7 @@ function showCameraPopup(message) {
 
 // Keyboard controls
 function handleKeyDown(e) {
+  console.log('keydown event:', e.key);
   if (e.key === 'o') {
     isOrbitEnabled = !isOrbitEnabled;
     cameraLockIndicator.style.display = isOrbitEnabled ? 'none' : 'block';
@@ -885,32 +915,35 @@ function handleKeyDown(e) {
     showCameraPopup('Camera D');
   }
 }
-document.addEventListener('keydown', handleKeyDown);
 
-// --- Basketball Movement Controls ---
 const keysPressed = {};
-document.addEventListener('keydown', (e) => {
-  keysPressed[e.key.toLowerCase()] = true;
-  // Shot power (W/S)
-  if (e.key.toLowerCase() === 'w') {
-    shotPower = Math.min(1.0, shotPower + SHOT_POWER_STEP);
-    updateShotPowerIndicator();
-  }
-  if (e.key.toLowerCase() === 's') {
-    shotPower = Math.max(0.01, shotPower - SHOT_POWER_STEP);
-    updateShotPowerIndicator();
-  }
-  // Reset (R)
-  if (e.key.toLowerCase() === 'r') {
-    resetBasketballPosition();
-  }
-  // Shoot (Spacebar)
-  if (e.code === 'Space' && !isBallMoving) {
-    shootBasketball();
-  }
-});
-document.addEventListener('keyup', (e) => {
-  keysPressed[e.key.toLowerCase()] = false;
+
+window.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('keydown', handleKeyDown);
+  // --- Basketball Movement Controls ---
+  document.addEventListener('keydown', (e) => {
+    keysPressed[e.key.toLowerCase()] = true;
+    // Shot power (W/S)
+    if (e.key.toLowerCase() === 'w') {
+      shotPower = Math.min(1.0, shotPower + SHOT_POWER_STEP);
+      updateShotPowerIndicator();
+    }
+    if (e.key.toLowerCase() === 's') {
+      shotPower = Math.max(0.01, shotPower - SHOT_POWER_STEP);
+      updateShotPowerIndicator();
+    }
+    // Reset (R)
+    if (e.key.toLowerCase() === 'r') {
+      resetBasketballPosition();
+    }
+    // Shoot (Spacebar)
+    if (e.code === 'Space' && !isBallMoving) {
+      shootBasketball();
+    }
+  });
+  document.addEventListener('keyup', (e) => {
+    keysPressed[e.key.toLowerCase()] = false;
+  });
 });
 
 function resetBasketballPosition() {
@@ -975,37 +1008,54 @@ function updateBasketballPhysics() {
     });
 
     // --- Robust Scoring Detection (crosses rim plane) ---
-    [LEFT_RIM, RIGHT_RIM].forEach(rim => {
-      const dx = ballPosition.x - rim.x;
-      const dz = ballPosition.z - rim.z;
-      const distXZ = Math.sqrt(dx * dx + dz * dz);
-      // Score if ball crosses from above to below rim plane, is within center, and not already scored
-      if (
-        !scoredThisShot &&
-        prevY > rim.y && // was above rim last frame
-        ballPosition.y <= rim.y && // now below rim
-        ballVelocity.y < 0 &&
-        distXZ < RIM_RADIUS * 0.6 // wider: more forgiving center
-      ) {
-        console.log('CROSSING RIM: pos=', ballPosition, 'vel=', ballVelocity, 'distXZ=', distXZ);
-        score += 2;
-        shotsMade++;
-        scoredThisShot = true;
-        lastShotResult = 'made';
-        updateScoreboardUI();
-        showShotMessage('SHOT MADE!', true);
-        // Play score sound
-        try { soundScore.currentTime = 0; soundScore.play(); } catch (e) {}
+    // Score for correct side
+    if (!scoredThisShot) {
+      // LEFT_RIM = visitor, RIGHT_RIM = local
+      let scored = false;
+      // Right rim (local)
+      {
+        const rim = RIGHT_RIM;
+        const dx = ballPosition.x - rim.x;
+        const dz = ballPosition.z - rim.z;
+        const distXZ = Math.sqrt(dx * dx + dz * dz);
+        if (
+          prevY > rim.y &&
+          ballPosition.y <= rim.y &&
+          ballVelocity.y < 0 &&
+          distXZ < RIM_RADIUS * 0.9
+        ) {
+          localScore += 2;
+          shotsMade++;
+          scoredThisShot = true;
+          lastShotResult = 'made';
+          updateScoreboardUI();
+          showShotMessage('SHOT MADE!', true);
+          try { soundScore.currentTime = 0; soundScore.play(); } catch (e) {}
+          scored = true;
+        }
       }
-      // Debug: log every time we cross the rim plane, even if not scored
-      if (
-        prevY > rim.y &&
-        ballPosition.y <= rim.y &&
-        ballVelocity.y < 0
-      ) {
-        console.log('DEBUG: Crossed rim plane. pos=', ballPosition, 'vel=', ballVelocity, 'distXZ=', distXZ, 'scoredThisShot=', scoredThisShot);
+      // Left rim (visitor)
+      if (!scored) {
+        const rim = LEFT_RIM;
+        const dx = ballPosition.x - rim.x;
+        const dz = ballPosition.z - rim.z;
+        const distXZ = Math.sqrt(dx * dx + dz * dz);
+        if (
+          prevY > rim.y &&
+          ballPosition.y <= rim.y &&
+          ballVelocity.y < 0 &&
+          distXZ < RIM_RADIUS * 0.9
+        ) {
+          visitorScore += 2;
+          shotsMade++;
+          scoredThisShot = true;
+          lastShotResult = 'made';
+          updateScoreboardUI();
+          showShotMessage('SHOT MADE!', true);
+          try { soundScore.currentTime = 0; soundScore.play(); } catch (e) {}
+        }
       }
-    });
+    }
 
     // Ground collision
     if (ballPosition.y <= BALL_STOP_HEIGHT) {
@@ -1079,7 +1129,7 @@ function updateBasketballPosition() {
       moved = true;
     }
     if (keysPressed['arrowdown']) {
-      ballPosition.z = Math.min(-COURT_BOUNDS.z, ballPosition.z + 0.2);
+      ballPosition.z = Math.min(COURT_BOUNDS.z, ballPosition.z + 0.2);
       moved = true;
     }
     if (moved) {
@@ -1197,7 +1247,8 @@ window.addEventListener('resize', () => {
 setInterval(() => {
   if (remainingSeconds > 0) {
     remainingSeconds--;
-    if (typeof updateScoreboardTimer === 'function') updateScoreboardTimer();
+    updatePhysicalScoreboard();
+    updateScoreboardUI();
   }
 }, 1000);
 
@@ -1240,7 +1291,7 @@ function shootBasketball() {
   try { soundShot.currentTime = 0; soundShot.play(); } catch (e) {}
 
   // Use a fixed apex height for the arc
-  const apexY = hoop.y + 5;
+  const apexY = hoop.y + 2.5;
   // Time to climb from current y to apex
   const tUp   = Math.sqrt(2 * (apexY - ballPosition.y) / -GRAVITY);
   // Time from apex down to hoop height
