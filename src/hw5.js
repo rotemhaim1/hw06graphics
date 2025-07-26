@@ -1115,6 +1115,8 @@ function updateBasketballPosition() {
   // Only allow movement if not in flight (no physics yet)
   if (!isBallMoving && basketballGroup) {
     let moved = false;
+    let prevX = ballPosition.x;
+    let prevZ = ballPosition.z;
     // Arrow keys: left/right/forward/back
     if (keysPressed['arrowleft']) {
       ballPosition.x = Math.max(-COURT_BOUNDS.x, ballPosition.x - 0.2);
@@ -1134,6 +1136,21 @@ function updateBasketballPosition() {
     }
     if (moved) {
       basketballGroup.position.set(ballPosition.x, ballPosition.y, ballPosition.z);
+      // --- Manual rolling rotation ---
+      const dx = ballPosition.x - prevX;
+      const dz = ballPosition.z - prevZ;
+      const horizVel = new THREE.Vector3(dx, 0, dz);
+      const horizSpeed = horizVel.length();
+      if (horizSpeed > 0.00001) {
+        let axis = new THREE.Vector3().crossVectors(horizVel, new THREE.Vector3(0, 1, 0));
+        if (axis.lengthSq() > 0.00001) {
+          axis.normalize();
+          let angle = (horizSpeed / BALL_RADIUS) * 0.2; // even slower rotation for manual
+          basketballGroup.rotateOnAxis(axis, angle);
+          ballRotationAxis.copy(axis);
+          ballRotationSpeed = angle;
+        }
+      }
     }
   }
 }
@@ -1169,24 +1186,40 @@ function updateBasketballRotation() {
   const dz = ballPosition.z - prevBallPosition.z;
   const velocity = new THREE.Vector3(dx, dy, dz);
   const speed = velocity.length();
-  // Only rotate if ball is moving (in air or rolling)
+  let axis = null;
+  let angle = 0;
+  // Determine if ball is rolling on ground
+  const isRolling =
+    Math.abs(ballPosition.y - BALL_STOP_HEIGHT) < 1e-3 &&
+    Math.abs(ballVelocity.y) < BALL_STOP_VELOCITY &&
+    (Math.abs(ballVelocity.x) > 1e-4 || Math.abs(ballVelocity.z) > 1e-4);
   if (isBallMoving && speed > 0.00001) {
-    // Axis is perpendicular to velocity and up (Y) direction
-    const up = new THREE.Vector3(0, 1, 0);
-    let axis = new THREE.Vector3().crossVectors(velocity, up);
-    if (axis.lengthSq() < 0.0001) axis.set(1, 0, 0); // fallback
-    axis.normalize();
-    // Smoothly interpolate axis for smooth transitions
-    ballRotationAxis.lerp(axis, 0.2);
-    // Rotation speed proportional to velocity (tune factor for realism)
-    const ROTATION_FACTOR = 6.0 / BALL_RADIUS; // much more visible spin
-    let targetSpeed = speed * ROTATION_FACTOR;
-    // Ensure a minimum visible spin when moving
-    if (targetSpeed < 0.03) targetSpeed = 0.03;
-    // Smoothly interpolate speed
-    ballRotationSpeed += (targetSpeed - ballRotationSpeed) * 0.2;
-    // Apply rotation
-    basketballGroup.rotateOnAxis(ballRotationAxis, ballRotationSpeed);
+    if (isRolling) {
+      // Rolling: use horizontal velocity only
+      const horizVel = new THREE.Vector3(dx, 0, dz);
+      const horizSpeed = horizVel.length();
+      if (horizSpeed > 0.00001) {
+        axis = new THREE.Vector3().crossVectors(horizVel, new THREE.Vector3(0, 1, 0));
+        if (axis.lengthSq() > 0.00001) {
+          axis.normalize();
+          angle = (horizSpeed / BALL_RADIUS) * 0.5; // slower rotation for rolling
+        }
+      }
+    } else {
+      // Flying: use full velocity
+      axis = new THREE.Vector3().crossVectors(velocity, new THREE.Vector3(0, 1, 0));
+      if (axis.lengthSq() > 0.00001) {
+        axis.normalize();
+        const ROTATION_FACTOR = 2.0 / BALL_RADIUS; // slower spin in air
+        angle = speed * ROTATION_FACTOR;
+        if (angle < 0.01) angle = 0.01;
+      }
+    }
+    if (axis && angle > 0) {
+      basketballGroup.rotateOnAxis(axis, angle);
+      ballRotationAxis.copy(axis);
+      ballRotationSpeed = angle;
+    }
   } else {
     // Gradually slow down rotation when stopped
     ballRotationSpeed *= 0.85;

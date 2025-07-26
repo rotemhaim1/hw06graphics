@@ -129,15 +129,10 @@ Example:
 ## Known Issues / Limitations
 - (List any known bugs or limitations here)
 
-## Additional Features (if implemented)
+## Additional Implemented Bonus Features
 - **Ball Trail Effect:** Visual trail following the basketball during flight (**implemented**)
 - **Sound Effects:** Audio feedback for shots, bounces, and scores (**implemented**)
 - **Time Challenge:** Timed shooting challenges with countdown (**implemented**)
-
-## Submission Notes
-- Submit via a public GitHub repository (recommended) or as a zip file
-- Include all source code, textures, and screenshots
-- Ensure this README is up to date and complete
 
 ## References
 - [THREE.js Documentation](https://threejs.org/docs/)
