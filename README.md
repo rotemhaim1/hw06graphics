@@ -63,12 +63,6 @@
 - **Stadium Environment**: Bleachers and enhanced lighting
 - **Camera Controls**: Multiple preset views and orbit controls
 
-## Any Known Issues or Limitations
-
-- Sound effects may not play in some browsers due to autoplay restrictions
-- Ball trail effect may cause slight performance impact on older devices
-- Camera controls may feel sensitive on high-DPI displays
-
 ## Sources of Any External Assets Used
 
 - [THREE.js](https://threejs.org/) (core library)
