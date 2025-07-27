@@ -32,8 +32,11 @@ scene.add(directionalLight);
 
 // Timer variables for the scoreboard
 let timerMesh = null;
-let remainingSeconds = 600; // 10 minutes = 600 seconds
+let remainingSeconds = 120; // 2 minutes = 120 seconds
 let updateScoreboardTimer = null; // function to update scoreboard timer
+let gameEnded = false; // Track if game has ended
+let gameEndMessageDiv = null; // Game end message element
+let newGameButton = null; // New game button element
 
 // --- Rim/Hoop Data ---
 const RIM_RADIUS = 0.5;
@@ -923,21 +926,21 @@ window.addEventListener('DOMContentLoaded', () => {
   // --- Basketball Movement Controls ---
   document.addEventListener('keydown', (e) => {
     keysPressed[e.key.toLowerCase()] = true;
-    // Shot power (W/S)
-    if (e.key.toLowerCase() === 'w') {
+    // Shot power (W/S) - only if game hasn't ended
+    if (e.key.toLowerCase() === 'w' && !gameEnded) {
       shotPower = Math.min(1.0, shotPower + SHOT_POWER_STEP);
       updateShotPowerIndicator();
     }
-    if (e.key.toLowerCase() === 's') {
+    if (e.key.toLowerCase() === 's' && !gameEnded) {
       shotPower = Math.max(0.01, shotPower - SHOT_POWER_STEP);
       updateShotPowerIndicator();
     }
-    // Reset (R)
-    if (e.key.toLowerCase() === 'r') {
+    // Reset (R) - only if game hasn't ended
+    if (e.key.toLowerCase() === 'r' && !gameEnded) {
       resetBasketballPosition();
     }
-    // Shoot (Spacebar)
-    if (e.code === 'Space' && !isBallMoving) {
+    // Shoot (Spacebar) - only if game hasn't ended
+    if (e.code === 'Space' && !isBallMoving && !gameEnded) {
       shootBasketball();
     }
   });
@@ -1112,6 +1115,11 @@ function updateBasketballPhysics() {
 }
 
 function updateBasketballPosition() {
+  // Don't allow movement if game has ended
+  if (gameEnded) {
+    return;
+  }
+  
   // Only allow movement if not in flight (no physics yet)
   if (!isBallMoving && basketballGroup) {
     let moved = false;
@@ -1142,7 +1150,8 @@ function updateBasketballPosition() {
       const horizVel = new THREE.Vector3(dx, 0, dz);
       const horizSpeed = horizVel.length();
       if (horizSpeed > 0.00001) {
-        let axis = new THREE.Vector3().crossVectors(horizVel, new THREE.Vector3(0, 1, 0));
+        // Fix rotation direction: invert the axis for correct rolling direction
+        let axis = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), horizVel);
         if (axis.lengthSq() > 0.00001) {
           axis.normalize();
           let angle = (horizSpeed / BALL_RADIUS) * 0.2; // even slower rotation for manual
@@ -1282,6 +1291,13 @@ setInterval(() => {
     remainingSeconds--;
     updatePhysicalScoreboard();
     updateScoreboardUI();
+  } else {
+    if (!gameEnded) {
+      gameEnded = true;
+      showGameEndMessage();
+      // Optionally reset game state or start a new game
+      // For now, just show the message
+    }
   }
 }, 1000);
 
@@ -1316,6 +1332,11 @@ function getNearestHoopPosition() {
 // }
 
 function shootBasketball() {
+  // Don't allow shooting if game has ended
+  if (gameEnded) {
+    return;
+  }
+  
   const hoop = getNearestHoopPosition();
   const dx = hoop.x - ballPosition.x;
   const dz = hoop.z - ballPosition.z;
@@ -1390,3 +1411,121 @@ const soundShot = new Audio('src/sounds/shot.mp3');
 const soundBounce = new Audio('src/sounds/bounce.mp3');
 const soundScore = new Audio('src/sounds/score.mp3');
 const soundMiss = new Audio('src/sounds/miss.mp3');
+
+function showGameEndMessage() {
+  if (gameEndMessageDiv) {
+    gameEndMessageDiv.remove();
+    gameEndMessageDiv = null;
+  }
+  
+  // Remove any existing new game button
+  if (newGameButton) {
+    newGameButton.remove();
+    newGameButton = null;
+  }
+  
+  // Calculate final statistics
+  const pct = shotAttempts > 0 ? ((shotsMade / shotAttempts) * 100).toFixed(1) : '0.0';
+  const winner = localScore > visitorScore ? 'LOCAL TEAM WINS!' : 
+                 visitorScore > localScore ? 'VISITOR TEAM WINS!' : 'IT\'S A TIE!';
+  
+  gameEndMessageDiv = document.createElement('div');
+  gameEndMessageDiv.style.position = 'absolute';
+  gameEndMessageDiv.style.top = '40%';
+  gameEndMessageDiv.style.left = '50%';
+  gameEndMessageDiv.style.transform = 'translate(-50%, -50%)';
+  gameEndMessageDiv.style.backgroundColor = 'rgba(0,0,0,0.95)';
+  gameEndMessageDiv.style.color = '#fff';
+  gameEndMessageDiv.style.padding = '30px 50px';
+  gameEndMessageDiv.style.borderRadius = '20px';
+  gameEndMessageDiv.style.fontFamily = 'Arial, sans-serif';
+  gameEndMessageDiv.style.fontSize = '24px';
+  gameEndMessageDiv.style.fontWeight = 'bold';
+  gameEndMessageDiv.style.zIndex = '2002';
+  gameEndMessageDiv.style.textAlign = 'center';
+  gameEndMessageDiv.style.border = '3px solid #0066cc';
+  gameEndMessageDiv.style.boxShadow = '0 0 30px rgba(0, 102, 204, 0.5)';
+  gameEndMessageDiv.innerHTML = `
+    <div style="font-size: 36px; color: #0066cc; margin-bottom: 20px;">GAME OVER!</div>
+    <div style="font-size: 28px; color: #0099ff; margin-bottom: 15px;">${winner}</div>
+    <div style="font-size: 26px; margin-bottom: 20px;">Final Score: Local ${localScore} - Visitor ${visitorScore}</div>
+    <div style="font-size: 18px; color: #ccc; line-height: 1.5;">
+      Shots Made: ${shotsMade} / ${shotAttempts} (${pct}%)<br>
+      Game Duration: 2:00 minutes
+    </div>
+  `;
+  document.body.appendChild(gameEndMessageDiv);
+
+  // Add a button to start a new game
+  newGameButton = document.createElement('button');
+  newGameButton.style.position = 'absolute';
+  newGameButton.style.top = '70%';
+  newGameButton.style.left = '50%';
+  newGameButton.style.transform = 'translate(-50%, -50%)';
+  newGameButton.style.backgroundColor = '#0066cc';
+  newGameButton.style.color = '#fff';
+  newGameButton.style.padding = '15px 40px';
+  newGameButton.style.borderRadius = '10px';
+  newGameButton.style.fontFamily = 'Arial, sans-serif';
+  newGameButton.style.fontSize = '20px';
+  newGameButton.style.fontWeight = 'bold';
+  newGameButton.style.zIndex = '2003';
+  newGameButton.style.border = 'none';
+  newGameButton.style.cursor = 'pointer';
+  newGameButton.style.boxShadow = '0 4px 8px rgba(0,0,0,0.3)';
+  newGameButton.style.transition = 'all 0.3s ease';
+  newGameButton.textContent = 'Start New Game';
+  
+  // Add hover effects
+  newGameButton.onmouseover = () => {
+    newGameButton.style.backgroundColor = '#0052a3';
+    newGameButton.style.transform = 'translate(-50%, -50%) scale(1.05)';
+  };
+  newGameButton.onmouseout = () => {
+    newGameButton.style.backgroundColor = '#0066cc';
+    newGameButton.style.transform = 'translate(-50%, -50%) scale(1)';
+  };
+  
+  newGameButton.onclick = () => {
+    // Reset all game state
+    gameEnded = false;
+    remainingSeconds = 120; // Reset time to 2 minutes
+    localScore = 0;
+    visitorScore = 0;
+    shotsMade = 0;
+    shotAttempts = 0;
+    lastShotResult = '';
+    scoredThisShot = false;
+    shotInProgress = false;
+    isBallMoving = false;
+    shotPower = 0.5;
+    
+    // Reset ball position and state
+    resetBasketballPosition();
+    
+    // Update UI
+    updateScoreboardUI();
+    updateShotPowerIndicator();
+    
+    // Remove game end message and button
+    if (gameEndMessageDiv) {
+      gameEndMessageDiv.remove();
+      gameEndMessageDiv = null;
+    }
+    if (newGameButton) {
+      newGameButton.remove();
+      newGameButton = null;
+    }
+    
+    // Reset camera to default view
+    camera.position.set(0, 15, 30);
+    camera.lookAt(0, 0, 0);
+    controls.target.set(0, 0, 0);
+    controls.update();
+    showCameraPopup('Camera A');
+    
+    // Show restart message
+    showShotMessage('NEW GAME STARTED!', true);
+  };
+  document.body.appendChild(newGameButton);
+}
