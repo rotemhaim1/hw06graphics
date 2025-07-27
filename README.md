@@ -78,9 +78,9 @@
 - [Sound effects] (see src/sounds/ for sources, downloaded from Pixabay)
 - [OrbitControls](src/OrbitControls.js) - Camera orbit controls
 
-## Screenshots (MANDATORY)
+## Screenshots/Video (MANDATORY)
 
-Include screenshots demonstrating:
+Include a video demonstrating:
 
 - Basketball movement (arrow keys)
 - Shot power adjustment (W/S keys)
@@ -89,30 +89,10 @@ Include screenshots demonstrating:
 - Ball rotation animation during movement and flight
 - Complete UI showing scores, statistics, and controls
 
-### Basketball Movement (Arrow Keys)
+### 🎥 Basketball Game Demo
 
-![Basketball Movement](screenshots/image1.png)
-
-### Shot Power Adjustment (W/S Keys)
-
-![Shot Power](screenshots/image2.png)
-
-### Basketball Shooting Mechanics (Spacebar)
-
-![Shooting](screenshots/image3.png)
-
-### Successful Shot with Score Update
-
-![Score Update](screenshots/image4.png)
-
-### Ball Rotation Animation During Movement and Flight
-
-![Ball Rotation](screenshots/image5.png)
-
-### Complete UI Showing Scores, Statistics, and Controls
+[![Watch the demo](https://img.youtube.com/vi/VSr3-W9T4a8/hqdefault.jpg)](https://www.youtube.com/watch?v=VSr3-W9T4a8)
 
 ![Complete UI](screenshots/CompleteUI.png)
 
----
 
-**See the HW06 instructions for full grading criteria and requirements.**
