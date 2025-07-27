@@ -89,7 +89,7 @@ Include a video demonstrating:
 - Ball rotation animation during movement and flight
 - Complete UI showing scores, statistics, and controls
 
-### 🎥 Basketball Game Demo
+### 🎥 Basketball Game Demo - Click on the following image to move to YOUTUBE
 
 [![Watch the demo](https://img.youtube.com/vi/VSr3-W9T4a8/hqdefault.jpg)](https://www.youtube.com/watch?v=VSr3-W9T4a8)
 
